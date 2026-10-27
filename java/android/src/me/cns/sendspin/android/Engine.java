@@ -2115,7 +2115,8 @@ public final class Engine {
         long every = bedtime.inWindow(now) ? 60000 : 300000;
         // something changed: tell HA now (only while syncs work: a failing one must not be retried every 5 s)
         if (ha.configured() && haFailures == 0 && !sensorSig.equals(sensorSignature(now)) && el - haAt > 5000) haAt = 0;
-        if (haFailures > 0) every = Math.min(30 * 60000L, every << Math.min(5, haFailures));
+        // after a failure (Home Assistant restarting, say) try again soon, then less often: 30 s, 1, 2, 4, 8, then 10 min
+        if (haFailures > 0) every = Math.min(10 * 60000L, 30000L << Math.min(5, haFailures - 1));
         boolean wifi = onWifi(), joined = wifi && !wasOnWifi;   // just got Wi-Fi (after boot, or home again): sync now
         wasOnWifi = wifi;
         if ((haAt == 0 || joined || el - haAt > every) && haBusy.compareAndSet(false, true)) {
@@ -2228,7 +2229,12 @@ public final class Engine {
     private static final String[][] IDENTITY = { { "owner_name", "idOwner" }, { "device_name", "idDevice" },
         { "lost_contact", "idContact" }, { "home_wifi", "idHomeWifi" }, { "counted_speakers", "idCountedSpeakers" } };
     private static final String[] SETTINGS = { "volume_limit", "hold_after", "unlock_speed", "wheel_click", "click_loudness",
-        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline" };
+        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline", "voice_local_only" };
+
+    /** Voice search never leaves the iPod (slower; needs the local model). */
+    public boolean voiceLocalOnly() { return store.num("voiceLocal", 0) == 1; }
+
+    public void setVoiceLocalOnly(boolean on) { store.put("voiceLocal", Long.valueOf(on ? 1 : 0)); touched("voice_local_only"); }
     private volatile boolean applyingHa;
 
     /** A setting changed here on the iPod (not one arriving from Home Assistant): it is now the newest. */
@@ -2256,6 +2262,7 @@ public final class Engine {
         if (k.equals("find_my")) return Boolean.valueOf(findMyEnabled());
         if (k.equals("speaker_always_on")) return Boolean.valueOf(speakerAlways());
         if (k.equals("keep_offline")) return Boolean.valueOf(keepAll());
+        if (k.equals("voice_local_only")) return Boolean.valueOf(voiceLocalOnly());
         for (String[] i : IDENTITY) if (i[0].equals(k)) return id.raw(i[1]);
         return null;
     }
@@ -2308,6 +2315,7 @@ public final class Engine {
         else if (k.equals("find_my")) setFindMyEnabled(boolOf(v));
         else if (k.equals("speaker_always_on")) setSpeakerAlways(boolOf(v));
         else if (k.equals("keep_offline")) setKeepAll(boolOf(v));
+        else if (k.equals("voice_local_only")) setVoiceLocalOnly(boolOf(v));
         else for (String[] i : IDENTITY) {
             if (!i[0].equals(k)) continue;
             if (id.update(i[1], v) && k.equals("device_name") && targetId.length() == 0) targetName = id.device();
@@ -2779,12 +2787,22 @@ public final class Engine {
     /** Speech to text (blocking): on the iPod if a local model is installed, else Home Assistant's speech-to-text. */
     public String transcribe(byte[] pcm) throws IOException {
         long t0 = android.os.SystemClock.elapsedRealtime();
-        String t = Voice.local(new File(app.getFilesDir(), "stt"), pcm);
-        if (t != null) {
-            log("voice: \"" + t + "\" on the iPod in " + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
-            return t;
+        pcm = Voice.trim(pcm);
+        File stt = new File(app.getFilesDir(), "stt");
+        // Home Assistant is quicker (about 2 s against 5 or more here) whenever it can be reached, unless the voice
+        // must stay on the iPod (the "Voice on the iPod only" setting); with no Wi-Fi the local model is the only way
+        boolean cloud = ha.configured() && onWifi() && !voiceLocalOnly();
+        if (!cloud || !Voice.hasLocal(stt)) {
+            String t;
+            t = Voice.local(stt, pcm);
+            if (t != null) {
+                log("voice: \"" + t + "\" on the iPod in " + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
+                return t;
+            }
+            if (voiceLocalOnly()) throw new IOException(Voice.hasLocal(stt) ? "Couldn\u2019t understand that" : "Voice search isn\u2019t set up on this iPod");
         }
         if (!ha.configured() || !onWifi()) throw new IOException("Voice search needs Wi-Fi");
+        String t;
         Map<String, Object> r = ha.sync(HaClient.args("transcribe", android.util.Base64.encodeToString(pcm, android.util.Base64.NO_WRAP),
             "rate", Integer.valueOf(Voice.RATE)));
         Object tr = r.get("transcript");

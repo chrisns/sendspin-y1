@@ -18,8 +18,9 @@ Home Assistant.
   syncs to the player), or take a song off again (also out of their Apple Music library).
 - **Voice search:** hold the centre button (anywhere but on a song, where holding favourites it), say what you want,
   let go. Playback pauses while it listens, a live waveform shows it hearing you, and the results list songs on the
-  player first, then what can be streamed. Speech becomes text on the player with whisper.cpp when installed
-  (`java/android/native/stt/build.sh install`), otherwise through Home Assistant's speech-to-text.
+  player first, then what can be streamed. Speech becomes text through Home Assistant's speech-to-text on Wi-Fi, or on
+  the player itself with whisper.cpp (`java/android/native/stt/build.sh install`, 3 to 5 s) when offline or when
+  "Voice on the iPod only" is on.
 - **Any speaker:** "Listen on" moves playback between the player (speaker or Bluetooth headphones) and any Music Assistant
   speaker, keeping the place. The player is also a [Sendspin](https://www.sendspin-audio.com/) speaker itself.
 - **Bedtime budget:** a listening allowance inside a night window, shared with the child's other speakers through Home

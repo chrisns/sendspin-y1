@@ -12,7 +12,7 @@ import java.io.InputStream;
 /**
  * Voice search: the built-in microphone (unadvertised, but it works: VOICE_RECOGNITION at 16 kHz) records while the
  * centre button is held. levels holds the recent loudness for the waveform. The speech becomes text on the iPod when a
- * local model is installed (files/stt: whisper.cpp's whisper-cli and a ggml model, see docs/NOTES.md), otherwise the
+ * local model is installed (files/stt: y1-stt, our small whisper.cpp front end, and a ggml model; see docs/NOTES.md), otherwise the
  * Engine sends it to Home Assistant's speech-to-text through the Y1 Player integration.
  */
 final class Voice {
@@ -91,19 +91,42 @@ final class Voice {
         return loud > RATE / 50;     // 20 ms of clearly-above-the-room sound
     }
 
-    // ---- on the iPod: whisper.cpp, when installed in files/stt (whisper-cli, model.bin)
+    // ---- on the iPod: whisper.cpp, when installed in files/stt (y1-stt, model.bin)
+
+    static boolean hasLocal(File dir) { return new File(dir, "y1-stt").canExecute() && new File(dir, "model.bin").isFile(); }
+
+    /**
+     * Just the speech: quiet before and after is cut (less for the encoder to chew on), with a little margin. "Quiet" is
+     * measured against this recording's own floor: the Y1's microphone hears its room at rms 100 to 1500.
+     */
+    static byte[] trim(byte[] pcm) {
+        int chunk = CHUNK * 2, n = pcm.length / chunk, first = -1, last = -1;
+        if (n < 4) return pcm;
+        double[] rms = new double[n];
+        for (int k = 0; k < n; k++) {
+            long sum = 0;
+            for (int i = k * chunk; i < (k + 1) * chunk; i += 2) { int v = (short) ((pcm[i] & 0xff) | (pcm[i + 1] << 8)); sum += (long) v * v; }
+            rms[k] = Math.sqrt(sum / (double) CHUNK);
+        }
+        double[] sorted = rms.clone();
+        java.util.Arrays.sort(sorted);
+        double loud = Math.max(sorted[n / 5] * 2.5, 450);  // well above the quietest fifth
+        for (int k = 0; k < n; k++) if (rms[k] > loud) { if (first < 0) first = k * chunk; last = (k + 1) * chunk; }
+        if (first < 0) return pcm;
+        int pad = RATE * 2 * 2 / 5;        // 400 ms either side: soft word ends (the "-ter" of "better") are quiet
+        int a = Math.max(0, first - pad), b = Math.min(pcm.length, last + pad);
+        return java.util.Arrays.copyOfRange(pcm, a, b);
+    }
 
     /** The local engine's text, or null if there is none (or it failed). */
     static String local(File dir, byte[] pcm) {
-        File bin = new File(dir, "whisper-cli"), model = new File(dir, "model.bin");
-        if (!bin.canExecute() || !model.isFile()) return null;
-        File wav = new File(dir, "voice.wav");
+        File bin = new File(dir, "y1-stt"), model = new File(dir, "model.bin");
+        if (!hasLocal(dir)) return null;
+        File raw = new File(dir, "voice.pcm");
         try {
-            writeWav(wav, pcm);
-            // the encoder's window shrinks to the speech (1500 frames is 30 s): much faster for a few words
-            int ac = Math.min(1500, Math.max(256, (int) (pcm.length / 2.0 / RATE * 50) + 64));
-            Process p = new ProcessBuilder(bin.getPath(), "-m", model.getPath(), "-f", wav.getPath(), "-l", "en", "-t", "2",
-                "-nt", "-np", "-ac", String.valueOf(ac), "-bs", "1", "-bo", "1").redirectErrorStream(false).start();
+            FileOutputStream o = new FileOutputStream(raw);
+            try { o.write(pcm); } finally { o.close(); }
+            Process p = new ProcessBuilder(bin.getPath(), model.getPath(), raw.getPath()).start();
             p.getOutputStream().close();
             InputStream in = p.getInputStream();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -112,23 +135,26 @@ final class Voice {
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
             if (p.waitFor() != 0) return null;
             String t = new String(out.toByteArray(), "UTF-8").replaceAll("\\[[^\\]]*\\]|\\([^)]*\\)", " ").replaceAll("\\s+", " ").trim();
-            return t;
+            return unrepeat(t.replaceAll("[.!?]+$", ""));
         } catch (Exception e) {
             return null;
         } finally {
-            wav.delete();
+            raw.delete();
         }
     }
 
-    private static void writeWav(File f, byte[] pcm) throws IOException {
-        FileOutputStream o = new FileOutputStream(f);
-        try {
-            java.nio.ByteBuffer h = java.nio.ByteBuffer.allocate(44).order(java.nio.ByteOrder.LITTLE_ENDIAN);
-            h.put("RIFF".getBytes("US-ASCII")).putInt(36 + pcm.length).put("WAVEfmt ".getBytes("US-ASCII")).putInt(16)
-                .putShort((short) 1).putShort((short) 1).putInt(RATE).putInt(RATE * 2).putShort((short) 2).putShort((short) 16)
-                .put("data".getBytes("US-ASCII")).putInt(pcm.length);
-            o.write(h.array());
-            o.write(pcm);
-        } finally { o.close(); }
+    /** Whisper on a short window can loop ("give you better give you better ..."): keep the phrase once. */
+    static String unrepeat(String t) {
+        String[] w = t.replaceAll("[.,!?]", "").trim().split("\\s+");
+        for (int len = 1; len <= w.length / 2; len++) {
+            int same = 0;
+            for (int i = len; i < w.length; i++) if (w[i].equalsIgnoreCase(w[i - len])) same++;
+            if (same >= (w.length - len) * 0.7) {
+                StringBuilder b = new StringBuilder();
+                for (int i = 0; i < len; i++) { if (b.length() > 0) b.append(' '); b.append(w[i]); }
+                return b.toString();
+            }
+        }
+        return t;
     }
 }
