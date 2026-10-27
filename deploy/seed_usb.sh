@@ -4,7 +4,7 @@
 # "audiobooks" also the audiobook files named in the library. The app's normal sync then only fetches what is missing.
 # Usage: deploy/seed_usb.sh [music|audiobooks|all]
 set -e
-export PATH="$HOME/Library/Android/sdk/platform-tools:$PATH"
+[ -d "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools" ] && export PATH="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools:$PATH"
 WHAT="${1:-music}"
 TMP="${TMPDIR:-/tmp}/y1-seed"
 if [ "$WHAT" = music ] || [ "$WHAT" = all ]; then
