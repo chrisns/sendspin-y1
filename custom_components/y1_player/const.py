@@ -43,6 +43,7 @@ SETTINGS = {
     "find_my": {"kind": "switch", "name": "Find My beacon", "default": True, "icon": "mdi:map-marker-radius"},
     "speaker_always_on": {"kind": "switch", "name": "Speaker always on", "default": False, "icon": "mdi:speaker-wireless"},
     "keep_offline": {"kind": "switch", "name": "Keep everything offline", "default": True, "icon": "mdi:download"},
+    "voice_local_only": {"kind": "switch", "name": "Voice on the iPod only", "default": False, "icon": "mdi:microphone-lock"},
 }
 
 BEDTIME_DEFAULTS = {"bedtime_start": "19:45:00", "bedtime_end": "06:30:00", "bedtime_cap": 20, "bedtime_used": 0}

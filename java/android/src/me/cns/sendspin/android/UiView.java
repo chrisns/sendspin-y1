@@ -1252,7 +1252,7 @@ public final class UiView extends View {
         else anim = drawScreens(c, w, h, u);
         long took = SystemClock.uptimeMillis() - t0;
         if (took > 40) android.util.Log.i("ab", "slow draw " + took + " ms");
-        if (attached) postInvalidateDelayed(anim ? 16 : (nowPlaying || lockShowing() || entry != null || eng.hold.held(t0) ? 250 : 600));
+        if (attached) postInvalidateDelayed(voiceState == 2 ? 100 : anim ? 16 : (nowPlaying || lockShowing() || entry != null || eng.hold.held(t0) ? 250 : 600));
     }
 
     // ---- text

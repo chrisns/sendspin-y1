@@ -239,10 +239,20 @@ without a highlighted line.
 
 - The Y1 has an unadvertised microphone that works (AudioRecord, VOICE_RECOGNITION, 16 kHz mono). Hold the centre
   button (not on a song row or Now Playing, where hold still favourites) to talk; let go to search. Up to 10 s.
-- Speech to text: `files/stt/whisper-cli` + `files/stt/model.bin` (whisper.cpp, static musl ARMv7 built with zig by
-  `java/android/native/stt/build.sh install`) if present, with the encoder window cut to the speech (`-ac`); else the
-  PCM goes in one sealed message to the Y1 Player integration, which runs a Home Assistant speech-to-text entity
-  (option `stt_entity`, default Home Assistant Cloud, ~1.5 s). With neither and no Wi-Fi: "Voice search needs Wi-Fi".
+- Speech to text: Home Assistant's speech-to-text through the Y1 Player integration when on Wi-Fi (option `stt_entity`,
+  default Home Assistant Cloud, ~1.7 s), on the iPod when offline or when the "Voice on the iPod only" setting is on.
+  On the iPod: `files/stt/y1-stt` + `files/stt/model.bin`, built and installed by `java/android/native/stt/build.sh
+  install` (whisper.cpp v1.7.6 libraries for ARMv7 via zig, `y1-stt.cpp` front end, tiny.en q5_1): 3 to 5 s.
+- Traps found getting whisper usable on the Y1 (one 1.3 GHz Cortex-A7 in practice):
+  - MediaTek's hotplug governor keeps the second core off and takes it away mid-run even with `cpu_hotplug_disable`;
+    ggml's worker threads spin waiting for each other, so `-t 2` on one core took minutes. Always one thread.
+  - whisper-cli on a short, noisy clip loops ("give you better give you better ..." for 1,112 tokens with temperature
+    fallback: 3 minutes). y1-stt: greedy, single segment, no fallback, 24 tokens at most, and a logits filter that
+    forces end-of-text after the first sentence or the first repeat.
+  - The encoder window (`audio_ctx`) cut to the audio itself; trailing silence invites repeats. The app trims quiet
+    around the speech against the recording's own noise floor (the Y1 mic hears its room at rms 100 to 1500).
+  - Building: CMake mangles a compiler named "zig cc", and macOS ar/ranlib cannot index ARM ELF objects (every symbol
+    then undefined at the link): build.sh uses one-word zig wrappers for cc, c++, ar and ranlib.
 - Results: songs on the iPod first (word match on title, artist, album, one letter of slack per word so "team spirit"
   finds "Teen Spirit"), then Music Assistant's search (songs already on the iPod left out), albums, artists.
 - Test hook 990 recognises `/sdcard/voice-test.pcm` (16 kHz mono s16le) as if spoken: `say -o q.aiff "..." &&
