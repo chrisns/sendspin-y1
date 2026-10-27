@@ -1,0 +1,36 @@
+# secrets and private config (tokens, TOTP, HA registration, private manifests)
+deploy/secrets/
+**/secrets/
+*.token
+.env
+
+# device backups, firmware and vendor tools: not ours to share
+flash/
+y1-stock-backup/
+ma-backup/
+rom/bt/*
+!rom/bt/install_shim.sh
+!rom/bt/NOTES.md
+rom/solar-initd/
+
+# working files
+.shots/
+tools/
+REVIEW-*.md
+MA-ISSUE-*.md
+__pycache__/
+*.pyc
+.DS_Store
+
+# build output and the generated signing key
+java/build/
+java/out/
+java/debug.keystore
+java/android/native/*.so
+java/android/native/fmhci
+java/android/native/wpactl
+*.apk
+
+# stale time zone builds (rom/tzdata/legacy is the one installed)
+rom/tzdata/dev/
+rom/tzdata/tzdata

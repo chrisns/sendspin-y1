@@ -1,0 +1,39 @@
+# Keeps /var/lib/music-sync in step with the FREYAS playlist: 192 kbps stereo MP3s + covers + manifest.json,
+# recorded from Music Assistant (the only thing that can decrypt Apple Music). The file server publishes it.
+# Runs in the Music Assistant image (python, cryptography, ffmpeg+libmp3lame). Needs: secret music-sync-token
+# (key "token", a Music Assistant API token) and configmap music-sync (created from deploy/music-sync/*.py).
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: music-sync, namespace: music-assistant}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app.kubernetes.io/name: music-sync}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: music-sync}}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # nodeSelector: {kubernetes.io/hostname: YOUR-NODE}   # the node whose hostPath holds the recordings
+      containers:
+      - name: sync
+        image: ghcr.io/music-assistant/server:2.10.7
+        command: ["/app/venv/bin/python", "-u", "/app/music-sync/music_sync.py"]
+        env:
+        - {name: PLAYLIST, value: FREYAS}                       # only used without LIBRARY_PROVIDER
+        - {name: LIBRARY_PROVIDER, value: apple_music--XXXXXXXX} # the child's own Apple Music provider instance in MA
+        - {name: PLAY_TOKEN_FILE, value: /secrets/play_token}   # an MA token for the child's MA user: streams from their account
+        - {name: OWNER_NAME, value: Sam}                         # as set in Home Assistant (Identity)
+        - {name: DEVICE_NAME, value: "Sam's Y1"}
+        - {name: WORKERS, value: "8"}
+        - {name: BITRATE, value: 192k}
+        - {name: TZ, value: Europe/London}
+        resources: {requests: {cpu: 200m, memory: 256Mi}, limits: {cpu: "2", memory: 1Gi}}
+        volumeMounts:
+        - {name: code, mountPath: /app/music-sync}
+        - {name: token, mountPath: /secrets, readOnly: true}
+        - {name: data, mountPath: /data}
+      volumes:
+      - {name: code, configMap: {name: music-sync}}
+      - {name: token, secret: {secretName: music-sync-token}}
+      - {name: data, hostPath: {path: /var/lib/music-sync, type: DirectoryOrCreate}}

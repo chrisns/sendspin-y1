@@ -1,0 +1,60 @@
+# Read-only static server for the audiobook volume, so the Y1 can download whole books for offline listening.
+# hostNetwork like music-assistant (same node); the random path prefix is the access token (LAN only).
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: audiobook-files, namespace: music-assistant}
+data:
+  nginx.conf: |
+    user root;  # some audiobook folders are not world-traversable; the volume is mounted read-only
+    worker_processes 1;
+    events { worker_connections 64; }
+    http {
+      include /etc/nginx/mime.types;
+      sendfile on;
+      access_log off;
+      include /etc/nginx/conf.d/*.conf;
+    }
+  default.conf: |
+    server {
+      listen 18099;
+      location /79009a5b057ff85222382696/ {
+        alias /audiobooks/;
+        autoindex off;
+        add_header Accept-Ranges bytes;
+      }
+      location /79009a5b057ff85222382696/music/ {
+        alias /music-sync/;
+        autoindex off;
+        add_header Accept-Ranges bytes;
+        add_header Cache-Control no-cache;
+      }
+      location / { return 404; }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: audiobook-files, namespace: music-assistant}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}  # hostNetwork: the old pod must release the port first
+  selector: {matchLabels: {app.kubernetes.io/name: audiobook-files}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: audiobook-files}}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # nodeSelector: {kubernetes.io/hostname: YOUR-NODE}
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        ports: [{containerPort: 18099, name: files}]
+        resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}
+        volumeMounts:
+        - {name: conf, mountPath: /etc/nginx/conf.d/default.conf, subPath: default.conf}
+        - {name: conf, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf}
+        - {name: audiobooks, mountPath: /audiobooks, readOnly: true}
+        - {name: music, mountPath: /music-sync, readOnly: true}
+      volumes:
+      - {name: conf, configMap: {name: audiobook-files}}
+      - {name: audiobooks, persistentVolumeClaim: {claimName: audiobooks, readOnly: true}}
+      - {name: music, hostPath: {path: /var/lib/music-sync, type: DirectoryOrCreate}}
