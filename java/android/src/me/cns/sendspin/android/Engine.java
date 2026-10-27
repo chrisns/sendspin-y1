@@ -1801,7 +1801,7 @@ public final class Engine {
 
     private void enforceVolumeLimit() {
         int lim = volumeLimit();
-        if (lim >= 100) return;
+        if (lim >= 100 || HelpActivity.open) return;     // the Help video of a gifted iPod plays full volume
         int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         int cap = Math.max(1, max * lim / 100);
         if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) > cap) audio.setStreamVolume(AudioManager.STREAM_MUSIC, cap, 0);
@@ -2229,7 +2229,16 @@ public final class Engine {
     private static final String[][] IDENTITY = { { "owner_name", "idOwner" }, { "device_name", "idDevice" },
         { "lost_contact", "idContact" }, { "home_wifi", "idHomeWifi" }, { "counted_speakers", "idCountedSpeakers" } };
     private static final String[] SETTINGS = { "volume_limit", "hold_after", "unlock_speed", "wheel_click", "click_loudness",
-        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline", "voice_local_only" };
+        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline", "voice_local_only", "gift_armed" };
+
+    /** Armed for gifting: the first unlock (three taps) plays the Help video at full volume, then it disarms itself. */
+    public boolean giftArmed() { return store.num("giftArmed", 0) == 1; }
+
+    public void setGiftArmed(boolean on) {
+        store.put("giftArmed", Long.valueOf(on ? 1 : 0));
+        touched("gift_armed");
+        if (on) hold.engage();                              // locked, so the next three taps are the unlock
+    }
 
     /** Voice search never leaves the iPod (slower; needs the local model). */
     public boolean voiceLocalOnly() { return store.num("voiceLocal", 0) == 1; }
@@ -2263,6 +2272,7 @@ public final class Engine {
         if (k.equals("speaker_always_on")) return Boolean.valueOf(speakerAlways());
         if (k.equals("keep_offline")) return Boolean.valueOf(keepAll());
         if (k.equals("voice_local_only")) return Boolean.valueOf(voiceLocalOnly());
+        if (k.equals("gift_armed")) return Boolean.valueOf(giftArmed());
         for (String[] i : IDENTITY) if (i[0].equals(k)) return id.raw(i[1]);
         return null;
     }
@@ -2316,6 +2326,7 @@ public final class Engine {
         else if (k.equals("speaker_always_on")) setSpeakerAlways(boolOf(v));
         else if (k.equals("keep_offline")) setKeepAll(boolOf(v));
         else if (k.equals("voice_local_only")) setVoiceLocalOnly(boolOf(v));
+        else if (k.equals("gift_armed")) setGiftArmed(boolOf(v));
         else for (String[] i : IDENTITY) {
             if (!i[0].equals(k)) continue;
             if (id.update(i[1], v) && k.equals("device_name") && targetId.length() == 0) targetName = id.device();

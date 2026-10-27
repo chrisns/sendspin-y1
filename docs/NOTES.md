@@ -258,3 +258,20 @@ without a highlighted line.
 - Test hook 990 recognises `/sdcard/voice-test.pcm` (16 kHz mono s16le) as if spoken: `say -o q.aiff "..." &&
   afconvert -f WAVE -d LEI16@16000 -c 1 q.aiff q.wav && tail -c +45 q.wav > q.pcm`.
 - A real press for testing: `sendevent /dev/input/event0 1 232 1` (centre, mtk-kpd), then `... 1 232 0` to let go.
+
+## Help video and gifting
+
+- `Help.java`/`HelpActivity.java`: plays `/sdcard/Help/help.mp4` in a VideoView from a chapter's start time and keeps
+  going; chapters come from `/sdcard/Help/help.json` (`{"chapters": [{"title": "Intro", "start": 0}, ...]}`, seconds). Wheel,
+  Next and Previous change chapter (Previous restarts the chapter first), the middle button pauses, Back or Menu leave. The
+  chapter name shows for 3 s on each change. The video must be baseline H.264 + AAC (`deploy/help/make_stub.py` shows the
+  ffmpeg settings the MT6572 decodes: 480x360, 15 fps).
+- "Armed for gifting" (`giftArmed`, setting `gift_armed`, Home Assistant switch): arming engages the button hold; the next
+  unlock (`UiView.holdKey`, left == 0) disarms and plays chapter 0 at full volume (the volume limit stands aside while
+  `HelpActivity.open`; the previous volume returns after). Tested awake, locked, three Menu presses. With the screen asleep
+  (injected presses do not wake it) Help paused and closed within 150 ms; a real tap wakes the screen first, and the awake
+  path is the one verified.
+- Test: `su -c am start -n me.cns.sendspin.android/.HelpActivity --ei chapter 3 --ez loud true`. adb dropped for a minute
+  when the video first started (USB blip, the iPod stayed up); `adb kill-server` brought it back.
+- An empty 200 from Home Assistant (webhook not registered, e.g. while it restarts) used to mark the player "removed"
+  until the app restarted; it is now a retryable error.

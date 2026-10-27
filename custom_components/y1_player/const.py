@@ -43,6 +43,8 @@ SETTINGS = {
     "find_my": {"kind": "switch", "name": "Find My beacon", "default": True, "icon": "mdi:map-marker-radius"},
     "speaker_always_on": {"kind": "switch", "name": "Speaker always on", "default": False, "icon": "mdi:speaker-wireless"},
     "keep_offline": {"kind": "switch", "name": "Keep everything offline", "default": True, "icon": "mdi:download"},
+    "gift_armed": {"kind": "switch", "name": "Armed for gifting", "default": False, "icon": "mdi:gift",
+                   "help": "locks the player; the first unlock plays the Help video at full volume, then this switches off"},
     "voice_local_only": {"kind": "switch", "name": "Voice on the iPod only", "default": False, "icon": "mdi:microphone-lock"},
 }
 

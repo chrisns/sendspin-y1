@@ -21,6 +21,11 @@ Home Assistant.
   player first, then what can be streamed. Speech becomes text through Home Assistant's speech-to-text on Wi-Fi, or on
   the player itself with whisper.cpp (`java/android/native/stt/build.sh install`, 3 to 5 s) when offline or when
   "Voice on the iPod only" is on.
+- **Help video and gifting:** the last row of the menu plays `/sdcard/Help/help.mp4`, listing its chapters (names and
+  start times from `help.json` beside it) so you can start anywhere; it carries on through the rest. "Armed for
+  gifting" (a switch on the Home Assistant device, or a grown-up row in Settings) locks the player so the first three-tap
+  unlock plays the video at full volume, then disarms: ready to hand over and explain itself. `deploy/help/make_stub.py
+  push` makes and installs a placeholder video; the real one replaces the two files.
 - **Any speaker:** "Listen on" moves playback between the player (speaker or Bluetooth headphones) and any Music Assistant
   speaker, keeping the place. The player is also a [Sendspin](https://www.sendspin-audio.com/) speaker itself.
 - **Bedtime budget:** a listening allowance inside a night window, shared with the child's other speakers through Home
