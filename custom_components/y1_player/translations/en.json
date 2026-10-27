@@ -4,11 +4,18 @@
       "user": {
         "title": "Add a Y1 player",
         "description": "The player shows its public key under Settings > About (or run deploy/push_bedtime.py pair, which does all of this for you).",
-        "data": {"name": "Name", "device_public_key": "Player public key"}
+        "data": {
+          "name": "Name",
+          "device_public_key": "Player public key"
+        }
       }
     },
-    "error": {"invalid_key": "That is not a 32-byte base64 X25519 key."},
-    "abort": {"already_configured": "This player is already added."}
+    "error": {
+      "invalid_key": "That is not a 32-byte base64 X25519 key."
+    },
+    "abort": {
+      "already_configured": "This player is already added."
+    }
   },
   "options": {
     "step": {
@@ -20,12 +27,16 @@
           "link_bedtime_end": "Window end (input_datetime)",
           "link_bedtime_cap": "Allowance minutes (input_number)",
           "link_bedtime_used": "Minutes used (input_number)",
-          "notify_service": "Notify when the grown-up code is used (e.g. notify.mobile_app_phone)"
+          "notify_service": "Notify when the grown-up code is used (e.g. notify.mobile_app_phone)",
+          "stt_entity": "Speech-to-text for voice search (when the player has no local model; default Home Assistant Cloud)"
         }
       }
     }
   },
   "services": {
-    "pairing_info": {"name": "Pairing info", "description": "Webhook and public key each player needs (used by the setup script)."}
+    "pairing_info": {
+      "name": "Pairing info",
+      "description": "Webhook and public key each player needs (used by the setup script)."
+    }
   }
 }

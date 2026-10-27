@@ -55,14 +55,16 @@ public final class Net {
         } finally { out.close(); in.close(); }
     }
 
-    public static String readText(File f) throws IOException {
+    public static String readText(File f) throws IOException { return new String(readBytes(f), UTF8); }
+
+    public static byte[] readBytes(File f) throws IOException {
         FileInputStream in = new FileInputStream(f);
         try {
             ByteArrayOutputStream o = new ByteArrayOutputStream();
             byte[] buf = new byte[16384];
             int n;
             while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
-            return new String(o.toByteArray(), UTF8);
+            return o.toByteArray();
         } finally { in.close(); }
     }
 

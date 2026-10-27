@@ -82,7 +82,7 @@ public final class MainActivity extends Activity {
 
     private static boolean holdable(int code) {
         return code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-            || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER   // hold centre: favourite
+            || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER   // hold centre: favourite, or voice search
             || code == KeyEvent.KEYCODE_MEDIA_NEXT || code == KeyEvent.KEYCODE_MEDIA_PREVIOUS;   // hold: 30 s in a book
     }
 
@@ -112,6 +112,7 @@ public final class MainActivity extends Activity {
         }
         if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {   // hold centre on a song: favourite it
             if (ui.toggleFavourite()) { longDone = true; return true; }
+            if (ui.startVoice()) { longDone = true; return true; }                      // anywhere else: voice search
         }
         return super.onKeyLongPress(code, e);
     }
@@ -120,6 +121,11 @@ public final class MainActivity extends Activity {
     public boolean onKeyUp(int code, KeyEvent e) {
         if (code == swallowUp) { swallowUp = -1; longDone = false; return true; }
         if (ui.holdKey(code, e, false)) { longDone = false; return true; }
+        if ((code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) && ui.listening()) {   // let go: search
+            ui.stopVoice();
+            longDone = false;
+            return true;
+        }
         if (holdable(code)) {
             if (!longDone && e.isTracking() && !e.isCanceled()) ui.onKey(code, e);
             longDone = false;

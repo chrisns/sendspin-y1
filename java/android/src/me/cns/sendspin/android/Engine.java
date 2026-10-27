@@ -2754,4 +2754,107 @@ public final class Engine {
             }
         } });
     }
+
+    // ---- voice search: hold the centre button and say what to find
+
+    public final Voice voice = new Voice();
+    private volatile boolean voicePaused;   // we paused playback to listen: resume afterwards
+
+    /** Start listening (pausing whatever plays); false if the microphone could not start. */
+    public boolean startListening() {
+        voicePaused = false;
+        if (playing) { pause(); voicePaused = true; }
+        if (voice.start()) return true;
+        if (voicePaused) { voicePaused = false; resume(); }
+        return false;
+    }
+
+    /** Stop listening; what was said, as recorded audio (resumes playback that listening paused). */
+    public byte[] stopListening() {
+        byte[] pcm = voice.stop();
+        if (voicePaused) { voicePaused = false; resume(); }
+        return pcm;
+    }
+
+    /** Speech to text (blocking): on the iPod if a local model is installed, else Home Assistant's speech-to-text. */
+    public String transcribe(byte[] pcm) throws IOException {
+        long t0 = android.os.SystemClock.elapsedRealtime();
+        String t = Voice.local(new File(app.getFilesDir(), "stt"), pcm);
+        if (t != null) {
+            log("voice: \"" + t + "\" on the iPod in " + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
+            return t;
+        }
+        if (!ha.configured() || !onWifi()) throw new IOException("Voice search needs Wi-Fi");
+        Map<String, Object> r = ha.sync(HaClient.args("transcribe", android.util.Base64.encodeToString(pcm, android.util.Base64.NO_WRAP),
+            "rate", Integer.valueOf(Voice.RATE)));
+        Object tr = r.get("transcript");
+        t = tr == null ? "" : String.valueOf(tr).replaceAll("[.!?]+$", "").trim();
+        log("voice: \"" + t + "\" from Home Assistant in " + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
+        return t;
+    }
+
+    private static List<String> words(String x) {
+        String n = java.text.Normalizer.normalize(x == null ? "" : x, java.text.Normalizer.Form.NFKD).toLowerCase(java.util.Locale.UK);
+        List<String> out = new ArrayList<String>();
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i <= n.length(); i++) {
+            char c = i < n.length() ? n.charAt(i) : ' ';
+            if (c == '\'') continue;                       // "don't" = "dont"
+            if (Character.isLetterOrDigit(c) && c < 128) b.append(c);
+            else if (Character.getType(c) == Character.NON_SPACING_MARK) continue;
+            else if (b.length() > 0) { out.add(b.toString()); b.setLength(0); }
+        }
+        return out;
+    }
+
+    /** One spoken word against one written word: the same, or one letter out for longer words. */
+    private static boolean near(String a, String b) {
+        if (a.equals(b)) return true;
+        if (Math.min(a.length(), b.length()) < 4 || Math.abs(a.length() - b.length()) > 1) return false;
+        int i = 0, j = 0, diff = 0;
+        while (i < a.length() && j < b.length()) {
+            if (a.charAt(i) == b.charAt(j)) { i++; j++; continue; }
+            if (++diff > 1) return false;
+            if (a.length() > b.length()) i++; else if (b.length() > a.length()) j++; else { i++; j++; }
+        }
+        return diff + (a.length() - i) + (b.length() - j) <= 1;
+    }
+
+    /** How well the words match: the share of spoken words found (title counts most), 0 for none. */
+    private static double score(List<String> q, MusicLibrary.Track t) {
+        List<String> title = words(t.title), artist = words(t.artist), album = words(t.album);
+        double got = 0;
+        int inTitle = 0;
+        for (String w : q) {
+            boolean ti = false, ot = false;
+            for (String x : title) if (near(w, x)) { ti = true; break; }
+            if (!ti) { for (String x : artist) if (near(w, x)) { ot = true; break; } }
+            if (!ti && !ot) { for (String x : album) if (near(w, x)) { ot = true; break; } }
+            if (ti) { got += 1; inTitle++; } else if (ot) got += 0.8;
+        }
+        if (q.isEmpty()) return 0;
+        double s = got / q.size();
+        if (inTitle == title.size() && inTitle == q.size()) s += 0.5;       // exactly the title
+        else if (inTitle > 0 && inTitle == title.size()) s += 0.25;         // the whole title (plus the artist, say)
+        return s;
+    }
+
+    /** Songs on the iPod for spoken (or typed) words, best first. */
+    public List<MusicLibrary.Track> localSearch(String q) {
+        List<String> qw = words(q);
+        List<MusicLibrary.Track> all = musicLib.tracks();
+        final Map<MusicLibrary.Track, Double> sc = new HashMap<MusicLibrary.Track, Double>();
+        for (MusicLibrary.Track t : all) {
+            double v = score(qw, t);
+            if (v >= 0.6) sc.put(t, Double.valueOf(v));
+        }
+        List<MusicLibrary.Track> out = new ArrayList<MusicLibrary.Track>(sc.keySet());
+        java.util.Collections.sort(out, new java.util.Comparator<MusicLibrary.Track>() {
+            public int compare(MusicLibrary.Track a, MusicLibrary.Track b) { return sc.get(b).compareTo(sc.get(a)); }
+        });
+        return out.size() > 30 ? out.subList(0, 30) : out;
+    }
+
+    /** Whether streaming results can be fetched now. */
+    public boolean canStream() { return ma != null && online && onWifi(); }
 }

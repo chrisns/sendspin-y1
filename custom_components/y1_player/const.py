@@ -15,6 +15,7 @@ OPT_LINK = {
     "bedtime_used": "link_bedtime_used",
 }
 OPT_NOTIFY = "notify_service"
+OPT_STT = "stt_entity"   # speech-to-text for voice search when the player has no local model
 
 EVENT_UNLOCKED = "y1_player_unlocked"
 

@@ -34,3 +34,9 @@ java/android/native/wpactl
 # stale time zone builds (rom/tzdata/legacy is the one installed)
 rom/tzdata/dev/
 rom/tzdata/tzdata
+
+# on-device speech model build (java/android/native/stt/build.sh)
+java/android/native/stt/whisper.cpp/
+java/android/native/stt/whisper-cli
+java/android/native/stt/*.bin
+java/android/native/stt/zig-arm.cmake

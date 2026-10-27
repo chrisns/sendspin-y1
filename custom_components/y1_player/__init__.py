@@ -6,6 +6,7 @@ holds no Home Assistant token and can do nothing else. All its settings are enti
 """
 from __future__ import annotations
 
+import base64
 import logging
 import time as _time
 from datetime import datetime, timedelta
@@ -23,7 +24,7 @@ from homeassistant.util import dt as dt_util
 
 from . import crypto
 from .const import (BEDTIME_DEFAULTS, CONF_CLOUDHOOK, CONF_DEVICE_PUB, CONF_SERVER_PRIV, CONF_SERVER_PUB, CONF_WEBHOOK_ID,
-                    DOMAIN, EVENT_UNLOCKED, OPT_LINK, OPT_NOTIFY, SETTINGS)
+                    DOMAIN, EVENT_UNLOCKED, OPT_LINK, OPT_NOTIFY, OPT_STT, SETTINGS)
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.DEVICE_TRACKER, Platform.TEXT, Platform.NUMBER,
@@ -151,7 +152,38 @@ class Y1Device:
         await self.apply(msg)
         self.save()
         self.changed()
-        return web.json_response(crypto.seal(self.k_out, self.reply(c)))
+        out = self.reply(c)
+        if msg.get("transcribe"):
+            out["transcript"] = await self.transcribe(base64.b64decode(msg["transcribe"]))
+        return web.json_response(crypto.seal(self.k_out, out))
+
+    async def transcribe(self, pcm: bytes) -> str:
+        """Voice search: 16 kHz mono 16-bit speech to text with a Home Assistant speech-to-text entity."""
+        from homeassistant.components import stt
+        eid = self.entry.options.get(OPT_STT)
+        if not eid:
+            ids = [s.entity_id for s in self.hass.states.async_all("stt")]
+            eid = "stt.home_assistant_cloud" if "stt.home_assistant_cloud" in ids else (ids[0] if ids else None)
+        ent = stt.async_get_speech_to_text_entity(self.hass, eid) if eid else None
+        if ent is None:
+            _LOGGER.warning("%s: voice search needs a speech-to-text entity", self.name)
+            return ""
+        langs = list(ent.supported_languages)
+        lang = next((x for x in ("en-GB", "en-gb", "en-US", "en") if x in langs), next((x for x in langs if x.lower().startswith("en")), langs[0]))
+        meta = stt.SpeechMetadata(language=lang, format=stt.AudioFormats.WAV, codec=stt.AudioCodecs.PCM,
+                                  bit_rate=stt.AudioBitRates.BITRATE_16, sample_rate=stt.AudioSampleRates.SAMPLERATE_16000,
+                                  channel=stt.AudioChannels.CHANNEL_MONO)
+
+        async def chunks():
+            for i in range(0, len(pcm), 3200):
+                yield pcm[i:i + 3200]
+        try:
+            run = getattr(ent, "internal_async_process_audio_stream", None) or ent.async_process_audio_stream
+            res = await run(meta, chunks())
+        except Exception:
+            _LOGGER.exception("%s: speech-to-text failed", self.name)
+            return ""
+        return (res.text or "") if res.result == stt.SpeechResultState.SUCCESS else ""
 
     async def apply(self, msg: dict[str, Any]) -> None:
         self.data["last_seen"] = dt_util.utcnow().isoformat()
