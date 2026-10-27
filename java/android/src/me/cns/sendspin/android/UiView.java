@@ -363,7 +363,8 @@ public final class UiView extends View {
                 post(new Runnable() { public void run() {
                     refresh();
                     List<Row> r = get();
-                    for (int i = 0; i < r.size(); i++) if (!r.get(i).header) { sel = i; break; }   // past the "Songs" heading
+                    if (sel >= r.size() || r.get(sel).header)                     // past the "Songs" heading
+                        for (int i = 0; i < r.size(); i++) if (!r.get(i).header) { sel = i; break; }
                     invalidate();
                 } });
             } }, "search").start();
@@ -400,6 +401,120 @@ public final class UiView extends View {
             push(s);
         } });
         entry.sets = new String[] { " abcdefghijklmnopqrstuvwxyz", "0123456789", "'&!?-.,()" };
+    }
+
+    // ---- voice search: hold the centre button (anywhere but on a song), speak, let go
+
+    private volatile int voiceState;   // 0 off, 1 listening, 2 working out what was said
+    private int voiceGen;              // a cancelled search's answer is dropped
+
+    /** Hold centre: start listening (playback pauses); false where voice search does not apply. */
+    public boolean startVoice() {
+        if (voiceState != 0 || entry != null || lockShowing() || eng.hold.held(SystemClock.uptimeMillis())) return false;
+        if (!eng.startListening()) { eng.notice("The microphone isn\u2019t working"); return true; }
+        voiceState = 1;
+        clunk();
+        invalidate();
+        return true;
+    }
+
+    public boolean listening() { return voiceState == 1; }
+
+    /** Centre let go: work out what was said, then search for it. */
+    public void stopVoice() {
+        if (voiceState != 1) return;
+        final byte[] pcm = eng.stopListening();
+        if (!Voice.anySpeech(pcm)) { voiceState = 0; eng.notice("Didn\u2019t hear anything: hold the centre button and speak"); invalidate(); return; }
+        recognise(pcm);
+    }
+
+    private void recognise(final byte[] pcm) {
+        voiceState = 2;
+        final int gen = ++voiceGen;
+        invalidate();
+        new Thread(new Runnable() { public void run() {
+            String t = null, err = null;
+            try { t = eng.transcribe(pcm); } catch (Exception e) { err = String.valueOf(e.getMessage()); }
+            final String text = t, problem = err;
+            post(new Runnable() { public void run() {
+                if (gen != voiceGen) return;
+                voiceState = 0;
+                if (problem != null) eng.notice(problem);
+                else if (text == null || text.length() == 0) eng.notice("Didn\u2019t catch that: try again");
+                else { nowPlaying = false; push(voiceResults(text)); }
+                invalidate();
+            } });
+        } }, "voice-stt").start();
+    }
+
+    /** What was said: songs on the iPod first, then (on Wi-Fi) what can be streamed. */
+    private Screen voiceResults(final String q) {
+        final List<MusicLibrary.Track> local = eng.localSearch(q);
+        final boolean stream = eng.canStream();
+        LoadingScreen s = new LoadingScreen() {
+            List<Row> load() throws Exception {
+                List<List<Engine.Found>> res = eng.search(q);
+                List<Row> r = new ArrayList<Row>();
+                String[] heads = { "Songs to stream", "Albums", "Artists" };
+                for (int k = 0; k < 3; k++) {
+                    List<Row> part = new ArrayList<Row>();
+                    for (Engine.Found f : res.get(k)) if (k != 0 || !eng.onIpod(f)) part.add(foundRow(f));   // on the iPod: listed above
+                    if (part.isEmpty()) continue;
+                    r.add(emptyRow(heads[k]));
+                    r.addAll(part);
+                }
+                return r;
+            }
+
+            List<Row> rows() {
+                List<Row> r = new ArrayList<Row>();
+                if (!local.isEmpty()) {
+                    r.add(emptyRow("On your iPod"));
+                    for (int i = 0; i < local.size(); i++) {
+                        final int at = i;
+                        MusicLibrary.Track t = local.get(i);
+                        Row row = new Row(t.title, t.artist, new Runnable() { public void run() { eng.playTracks(local, at, false); nowPlaying = true; } });
+                        row.track = t;
+                        row.song = true;
+                        r.add(row);
+                    }
+                }
+                if (!stream) r.add(emptyRow(local.isEmpty() ? "Nothing on your iPod: connect to Wi-Fi to search Apple Music" : "Connect to Wi-Fi to find more"));
+                else if (failed != null) r.add(emptyRow("Couldn\u2019t search Apple Music: " + failed));
+                else if (loaded == null) r.add(emptyRow("Searching Apple Music\u2026"));
+                else if (loaded.isEmpty()) { if (local.isEmpty()) r.add(emptyRow("Nothing found")); }
+                else r.addAll(loaded);
+                return r;
+            }
+        };
+        s.title = "\u201c" + q + "\u201d";
+        for (int i = 0; i < s.get().size(); i++) if (!s.get().get(i).header) { s.sel = i; break; }
+        if (stream) s.start();
+        return s;
+    }
+
+    /** "Go ahead, I'm listening...": the voice as a live waveform; a gentle ripple while it is worked out. */
+    private boolean drawListening(Canvas c, int w, int h, float u) {
+        fill(0xFF0B0B10);
+        c.drawRect(0, 0, w, h, p);
+        boolean working = voiceState == 2;
+        long now = SystemClock.uptimeMillis();
+        textCentred(c, working ? "One moment\u2026" : "Go ahead, I\u2019m listening\u2026", w / 2f, h * 0.2f, u * 1.15f, WHITE, SEMI, w - 2 * u);
+        float[] lv = eng.voice.levels;
+        int n = lv.length, at = eng.voice.levelAt;
+        float slot = (w - 2 * u) / n, bw = slot * 0.62f, mid = h * 0.5f, maxH = h * 0.2f, r = bw / 2;
+        fill(working ? 0xFF6E6E78 : 0xFF0A84FF);
+        for (int i = 0; i < n; i++) {
+            float v = working ? 0.12f + 0.1f * (float) (1 + Math.sin(now / 160.0 - i * 0.5))
+                : lv[((at - n + i) % n + n) % n];
+            float bh = Math.max(bw, v * maxH);
+            float x = u + i * slot + (slot - bw) / 2;
+            rect.set(x, mid - bh, x + bw, mid + bh);
+            c.drawRoundRect(rect, r, r, p);
+        }
+        textCentred(c, working ? "Working out what you said" : (eng.voice.recording ? "Let go when you\u2019re done" : "That\u2019s long enough: let go"),
+            w / 2f, h * 0.84f, u * 0.8f, 0xFF8E8E93, REG, w - 2 * u);
+        return true;
     }
 
     private Row foundRow(final Engine.Found f) {
@@ -915,6 +1030,14 @@ public final class UiView extends View {
 
     public boolean onKey(int code, KeyEvent ev) {
         lastKey = KeyEvent.keyCodeToString(code);
+        if (code == 990) {      // test hook only: recognise /sdcard/voice-test.pcm (16 kHz mono 16-bit) as if spoken
+            try { recognise(Net.readBytes(new java.io.File("/sdcard/voice-test.pcm"))); } catch (Exception e) { eng.notice("no test audio"); }
+            return true;
+        }
+        if (voiceState == 2) {              // working out what was said: Back cancels, the rest waits
+            if (code == KeyEvent.KEYCODE_BACK) { voiceGen++; voiceState = 0; invalidate(); }
+            return true;
+        }
         if (code == 999) { startEntry("Password test", new Entry.Done() { public void done(String t) { eng.notice("typed: " + t); } }); return true; }  // test hook only
         if (code == 997) {      // design preview: Now Playing for the highlighted book, without starting it
             List<Row> rs = top().get();
@@ -1118,7 +1241,8 @@ public final class UiView extends View {
         th = forceDark || eng.bedtime.inWindow(eng.clock.now()) ? DARK : LIGHT;
         p.setShader(null);
         boolean anim;
-        if (eng.hold.held(SystemClock.uptimeMillis())) {
+        if (voiceState != 0) anim = drawListening(c, w, h, u);
+        else if (eng.hold.held(SystemClock.uptimeMillis())) {
             if (eng.playing && eng.current != null) { anim = drawNow(c, w, h, u); holdPrompt(c, w, h, u, 0xE61C1E24); }
             else anim = drawHold(c, w, h, u);
         }

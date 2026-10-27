@@ -234,3 +234,17 @@ without a highlighted line.
   local MA patch (~/httpdocs/infra/music-assistant/patches/sitecustomize.py) makes delete from her Apple Music library
   (only accounts she can see), plus the "the player: removed" playlist that music-sync leaves out. Re-adding from
   search takes it off that list.
+
+## Voice search
+
+- The Y1 has an unadvertised microphone that works (AudioRecord, VOICE_RECOGNITION, 16 kHz mono). Hold the centre
+  button (not on a song row or Now Playing, where hold still favourites) to talk; let go to search. Up to 10 s.
+- Speech to text: `files/stt/whisper-cli` + `files/stt/model.bin` (whisper.cpp, static musl ARMv7 built with zig by
+  `java/android/native/stt/build.sh install`) if present, with the encoder window cut to the speech (`-ac`); else the
+  PCM goes in one sealed message to the Y1 Player integration, which runs a Home Assistant speech-to-text entity
+  (option `stt_entity`, default Home Assistant Cloud, ~1.5 s). With neither and no Wi-Fi: "Voice search needs Wi-Fi".
+- Results: songs on the iPod first (word match on title, artist, album, one letter of slack per word so "team spirit"
+  finds "Teen Spirit"), then Music Assistant's search (songs already on the iPod left out), albums, artists.
+- Test hook 990 recognises `/sdcard/voice-test.pcm` (16 kHz mono s16le) as if spoken: `say -o q.aiff "..." &&
+  afconvert -f WAVE -d LEI16@16000 -c 1 q.aiff q.wav && tail -c +45 q.wav > q.pcm`.
+- A real press for testing: `sendevent /dev/input/event0 1 232 1` (centre, mtk-kpd), then `... 1 232 0` to let go.

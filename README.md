@@ -16,6 +16,10 @@ Home Assistant.
   to the player, with covers and lyrics. Audiobooks download from Music Assistant. Everything plays with no Wi-Fi.
 - **Search and add:** search Apple Music from the wheel, stream a song or album, add it to the child's library (it then
   syncs to the player), or take a song off again (also out of their Apple Music library).
+- **Voice search:** hold the centre button (anywhere but on a song, where holding favourites it), say what you want,
+  let go. Playback pauses while it listens, a live waveform shows it hearing you, and the results list songs on the
+  player first, then what can be streamed. Speech becomes text on the player with whisper.cpp when installed
+  (`java/android/native/stt/build.sh install`), otherwise through Home Assistant's speech-to-text.
 - **Any speaker:** "Listen on" moves playback between the player (speaker or Bluetooth headphones) and any Music Assistant
   speaker, keeping the place. The player is also a [Sendspin](https://www.sendspin-audio.com/) speaker itself.
 - **Bedtime budget:** a listening allowance inside a night window, shared with the child's other speakers through Home

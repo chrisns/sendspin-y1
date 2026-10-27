@@ -11,7 +11,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from . import crypto
-from .const import CONF_DEVICE_PUB, CONF_SERVER_PRIV, CONF_SERVER_PUB, CONF_WEBHOOK_ID, DOMAIN, OPT_LINK, OPT_NOTIFY
+from .const import CONF_DEVICE_PUB, CONF_SERVER_PRIV, CONF_SERVER_PUB, CONF_WEBHOOK_ID, DOMAIN, OPT_LINK, OPT_NOTIFY, OPT_STT
 
 
 class Y1ConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -63,4 +63,6 @@ class Y1OptionsFlow(OptionsFlow):
             vol.Optional(OPT_LINK["bedtime_cap"], description={"suggested_value": o.get(OPT_LINK["bedtime_cap"])}): num_sel,
             vol.Optional(OPT_LINK["bedtime_used"], description={"suggested_value": o.get(OPT_LINK["bedtime_used"])}): num_sel,
             vol.Optional(OPT_NOTIFY, description={"suggested_value": o.get(OPT_NOTIFY)}): str,
+            vol.Optional(OPT_STT, description={"suggested_value": o.get(OPT_STT)}):
+                selector.EntitySelector(selector.EntitySelectorConfig(domain="stt")),
         }))
