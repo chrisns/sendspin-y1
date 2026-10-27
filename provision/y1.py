@@ -80,7 +80,8 @@ def doctor(_a=None):
     a = adb_path()
     if a:
         out = subprocess.run([a, "devices"], capture_output=True, text=True).stdout
-        say("Devices seen by adb:\n" + "".join("  " + l + "\n" for l in out.splitlines()[1:] if l.strip()) or "  none")
+        devs = [l for l in out.splitlines()[1:] if l.strip()]
+        say("Devices seen by adb:" + ("".join("\n  " + l for l in devs) if devs else " none"))
     return ok
 
 
