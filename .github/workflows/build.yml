@@ -20,7 +20,7 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-17" "build-tools;34.0.0"
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
-      - uses: mlugg/setup-zig@v1
+      - uses: mlugg/setup-zig@v2
         with: { version: 0.17.0 }
       - name: Build the app and the ARM helpers
         run: python3 provision/y1.py build
