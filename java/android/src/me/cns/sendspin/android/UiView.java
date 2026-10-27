@@ -646,8 +646,10 @@ public final class UiView extends View {
             List<Row> rows() {
                 final Sys sys = eng.sys;
                 List<Row> r = new ArrayList<Row>();
-                r.add(new Row("Wi-Fi: " + (sys.wifiOn() ? "on" : "off"), "select to switch (grown-up code)", grownUp(new Runnable() { public void run() {
-                    sys.setWifiOn(!sys.wifiOn()); } })));
+                // switching it on, or joining a network, is fine for anyone; switching it off or forgetting one needs a grown-up
+                Runnable off = grownUp(new Runnable() { public void run() { sys.setWifiOn(false); } });
+                r.add(new Row("Wi-Fi: " + (sys.wifiOn() ? "on" : "off"), sys.wifiOn() ? "select to switch off (grown-up code)" : "select to switch on",
+                    sys.wifiOn() ? off : new Runnable() { public void run() { sys.setWifiOn(true); } }));
                 if (!sys.wifiOn()) return r;
                 r.add(new Row("Search again", null, new Runnable() { public void run() { sys.scan(); } }));
                 for (final Sys.Net n : sys.networks()) {
@@ -656,13 +658,11 @@ public final class UiView extends View {
                     r.add(nav(new Row(n.ssid, sub, new Runnable() { public void run() {
                         if (n.connected) { push(networkPage(n)); return; }
                         if (n.saved) { sys.join(n.ssid, null); eng.notice("Joining " + n.ssid); return; }
-                        // a new network takes the iPod off home Wi-Fi (and the shared bedtime count): grown-ups only
-                        grownUp(new Runnable() { public void run() {
-                            if (!n.secure) { sys.join(n.ssid, null); eng.notice("Joining " + n.ssid); return; }
-                            startEntry("Password for " + n.ssid, new Entry.Done() { public void done(String pw) {
-                                boolean ok = sys.join(n.ssid, pw);
-                                eng.notice(ok ? "Joining " + n.ssid : "Couldn't join " + n.ssid); } });
-                        } }).run();
+                        // bedtime still counts away from home (offline, and through Nabu Casa), so no grown-up needed
+                        if (!n.secure) { sys.join(n.ssid, null); eng.notice("Joining " + n.ssid); return; }
+                        startEntry("Password for " + n.ssid, new Entry.Done() { public void done(String pw) {
+                            boolean ok = sys.join(n.ssid, pw);
+                            eng.notice(ok ? "Joining " + n.ssid : "Couldn't join " + n.ssid); } });
                     } })));
                 }
                 return r;
