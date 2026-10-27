@@ -1,0 +1,23 @@
+---
+chapter: 7
+title: Listening on speakers and headphones
+---
+
+# 7. Listening on speakers and headphones
+
+*Play it in the kitchen, or in your ears*
+
+## Narration
+
+> Choose Listen on to play your music on a speaker in the house, like the one in your room. It carries on from the same place.
+>
+> For headphones, go to Settings and choose Bluetooth. Pick your headphones and they connect. Turn the volume with the wheel or the buttons on the headphones.
+
+## On screen
+
+- {{shot:listen-on}}
+- {{shot:bluetooth}}
+
+## For grown-ups
+
+Playback moves between the player (its own speaker, or Bluetooth headphones) and any Music Assistant speaker, keeping the position. The player can also appear as a Sendspin speaker itself (*iPod as a speaker*). Bluetooth pairing uses the system stack; connecting is done as root because of a permissions quirk on this Android build (see NOTES).

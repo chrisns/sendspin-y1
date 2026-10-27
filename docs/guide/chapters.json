@@ -1,0 +1,48 @@
+{
+ "chapters": [
+  {
+   "title": "Intro",
+   "start": 0.0
+  },
+  {
+   "title": "Finding your way around",
+   "start": 30.6
+  },
+  {
+   "title": "Music",
+   "start": 56.0
+  },
+  {
+   "title": "Favourites",
+   "start": 82.6
+  },
+  {
+   "title": "Audiobooks",
+   "start": 102.0
+  },
+  {
+   "title": "Searching",
+   "start": 123.0
+  },
+  {
+   "title": "Listening on speakers and headphones",
+   "start": 160.4
+  },
+  {
+   "title": "Bedtime",
+   "start": 184.6
+  },
+  {
+   "title": "Finding your iPod",
+   "start": 210.0
+  },
+  {
+   "title": "Settings",
+   "start": 231.4
+  },
+  {
+   "title": "That is everything",
+   "start": 251.6
+  }
+ ]
+}

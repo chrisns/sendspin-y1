@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""A placeholder Help video for the player: one title card and a spoken line per chapter, as help.mp4 + help.json.
+"""A placeholder Help video for the player: one title card per chapter of docs/guide, narrated with the guide's own words,
+as help.mp4 + help.json.
 
   deploy/help/make_stub.py [push]     make it in deploy/help/out/, and with "push" put it on the player (/sdcard/Help)
 
@@ -14,15 +15,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
 FONT = os.path.join(HERE, "..", "..", "java", "android", "assets", "fonts", "Inter-Bold.ttf")
 ADB = os.environ.get("ADB") or os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
-CHAPTERS = [
-    ("Intro", "Hello! This is your iPod. This is a placeholder for the help video."),
-    ("Playing music", "Turn the wheel to move, press the middle to choose."),
-    ("Audiobooks", "Your audiobooks are here, and the iPod remembers where you stopped."),
-    ("Searching by voice", "Hold the middle button, say a song, and let go."),
-    ("Listening on a speaker", "Choose Listen on to play on a speaker in the house."),
-    ("Bedtime", "At bedtime the iPod stops after a while. A grown-up has a code to carry on."),
-    ("Finding your iPod", "If it is lost, a grown-up can make it ring from Home Assistant."),
-]
+sys.path.insert(0, os.path.join(HERE, "..", "..", "docs", "guide"))
+import build as guide                   # the chapters and their narration live in docs/guide (the script and the docs are one)
+CHAPTERS = [(c["title"], " ".join(c["narration"])) for c in guide.chapters()]
 W, H = 480, 360
 
 os.makedirs(OUT, exist_ok=True)
