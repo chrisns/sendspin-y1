@@ -3,7 +3,7 @@
 # (platform android-17, build-tools 34.0.0) and a JDK 17.
 set -e
 cd "$(dirname "$0")"
-SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 BT="$SDK/build-tools/34.0.0"
 JAR="$SDK/platforms/android-17/android.jar"
 rm -rf build && mkdir -p build/classes

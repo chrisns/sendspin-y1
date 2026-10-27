@@ -3,7 +3,7 @@
 # Secrets stay in deploy/secrets (gitignored), never in the APK.
 set -e
 cd "$(dirname "$0")"
-export PATH="$HOME/Library/Android/sdk/platform-tools:$PATH"
+[ -d "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools" ] && export PATH="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools:$PATH"
 HOST="${MA_HOST:?set MA_HOST to the Music Assistant server address}"
 adb kill-server >/dev/null 2>&1 || true
 adb start-server >/dev/null 2>&1

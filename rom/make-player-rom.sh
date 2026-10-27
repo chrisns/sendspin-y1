@@ -8,7 +8,7 @@
 # installs current time zone rules (Solar ships 2012h).
 set -e
 cd "$(dirname "$0")"
-export PATH="$HOME/Library/Android/sdk/platform-tools:$PATH"
+[ -d "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools" ] && export PATH="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools:$PATH"
 adb wait-for-device
 # 1. Solar's missing native libraries (copied out of its own APK)
 TMP=$(mktemp -d); adb pull /system/app/com.solar.launcher.apk "$TMP/s.apk" >/dev/null
