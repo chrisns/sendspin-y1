@@ -1,0 +1,9 @@
+sendspin-y1 test: provisioning bundle.
+
+  python3 provision/y1.py doctor
+  python3 provision/y1.py fetch        (Solar ROM and the flashing tool: downloaded from their own projects)
+  python3 provision/y1.py flash        (Y1 switched off, then plug it in)
+  python3 provision/y1.py provision --prebuilt prebuilt [--shim] [--voice]
+
+The app in prebuilt/ is signed with a key made for this release; to update a Y1 that has an older release on it, uninstall
+the old app first (adb uninstall me.cns.sendspin.android), or build from source with your own key.

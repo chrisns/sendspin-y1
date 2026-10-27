@@ -1,0 +1,13 @@
+{
+  "domain": "y1_player",
+  "name": "Y1 Player",
+  "codeowners": ["@chrisns"],
+  "config_flow": true,
+  "dependencies": ["webhook"],
+  "after_dependencies": ["cloud"],
+  "documentation": "https://github.com/chrisns/sendspin-y1",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/chrisns/sendspin-y1/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

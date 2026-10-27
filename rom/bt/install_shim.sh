@@ -10,7 +10,9 @@ set -e
 cd "$(dirname "$0")"
 ADB="adb -d"
 if [ "$1" = remove ]; then SRC=orig/libbluetoothdrv_logging.so; else
-  sh ../../java/android/native/build.sh; SRC=../../java/android/native/libbluetoothdrv.so; fi
+  # build the shim when zig is here; a release bundle brings it already built
+  if command -v zig >/dev/null 2>&1; then sh ../../java/android/native/build.sh; fi
+  SRC=../../java/android/native/libbluetoothdrv.so; fi
 $ADB push "$SRC" /data/local/tmp/libbluetoothdrv.new >/dev/null
 $ADB shell "su -c '
   [ -f /data/local/tmp/drv-orig/libbluetoothdrv.so ] || { mkdir -p /data/local/tmp/drv-orig; cp /system/lib/libbluetoothdrv.so /data/local/tmp/drv-orig/; }

@@ -1,0 +1,19 @@
+{
+  "ha_url": "https://homeassistant.local:8123",
+  "ha_admin_token_file": "~/.config/y1/ha_admin_token",
+  "name": "Sam's Y1",
+  "otp_title": "Sam's Y1 grown-up code",
+  "links": {
+    "bedtime_start": "",
+    "bedtime_end": "",
+    "bedtime_cap": "",
+    "bedtime_used": ""
+  },
+  "notify": "",
+  "settings": {
+    "owner_name": "Sam",
+    "device_name": "Sam's Y1",
+    "lost_contact": "If found, please call 07700 900000|or email lost@example.com",
+    "home_wifi": "MyHomeWiFi"
+  }
+}
