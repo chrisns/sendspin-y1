@@ -16,8 +16,8 @@ import javax.net.ssl.TrustManagerFactory;
 /**
  * Modern HTTPS for Android 4.2: Home Assistant (its own hostname and the Nabu Casa remote URL) needs TLS 1.2 with
  * AES-GCM, which 4.2's built-in stack lacks, and a Let's Encrypt chain (YR1 > Root YR > ISRG Root X1) newer than its
- * trust store. So: Conscrypt (bundled, libs/) for the protocol, and the Let's Encrypt roots from assets/certs as the
- * only trust anchors for these connections.
+ * trust store. So: Conscrypt (bundled, libs/) for the protocol, and the roots in assets/certs as the only trust
+ * anchors for these connections: Let's Encrypt, and Amazon Root CA 1 (the Nabu Casa cloudhook, hooks.nabu.casa).
  */
 public final class Tls {
     private static SSLSocketFactory factory;

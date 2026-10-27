@@ -22,9 +22,13 @@ Home Assistant.
   Assistant, enforced offline too. A one-time grown-up code (TOTP, in 1Password) lifts it.
 - **Clean versions:** explicit songs are replaced with Apple's clean versions where they exist; explicit search results
   are hidden.
-- **Home Assistant device:** battery, now playing, bedtime minutes, location (home Wi-Fi or GPS), and a find button that
-  makes the player chime. Its identity (owner name, device name, "if found" contact, home Wi-Fi) is set from Home
-  Assistant helpers, so nothing personal lives in the code.
+- **Home Assistant device:** its own integration (Y1 Player) shows battery, now playing, bedtime minutes and location
+  (home Wi-Fi or GPS), has a Find it button that makes the player chime, and holds every setting: owner and device
+  name, "if found" contact, home Wi-Fi, bedtime window and allowance, volume limit, hold, wheel click, Find My and
+  more. Change them in Home Assistant or on the player; the newest change wins. Nothing personal lives in the code.
+- **No token on the device:** the player pairs with the integration by public key (X25519) and talks to it only through
+  sealed, replay-proof messages, so it can report and read its settings and nothing else, at home or through Nabu
+  Casa.
 - **Find My beacon:** an OpenHaystack-style Bluetooth beacon that keeps running alongside Wi-Fi and Bluetooth audio, via
   a small driver shim (no LE advertising-parameters command, which crashes this chip's firmware).
 
@@ -44,7 +48,7 @@ flowchart LR
     Y1["Y1 player app"]
     FS -->|"MP3s, covers, lyrics"| Y1
     MA <-->|"browse, stream, search,<br/>Sendspin speaker"| Y1
-    HA <-->|"mobile_app webhook (encrypted):<br/>bedtime, sensors, identity, find"| Y1
+    HA <-->|"Y1 Player integration (sealed webhook):<br/>sensors, settings, bedtime, find"| Y1
     MA --> SP["Sonos and other speakers"]
 ```
 
@@ -57,14 +61,15 @@ flowchart LR
 | `java/android/native/` | root helpers: the Bluetooth driver shim (`btshim.c`), the beacon helper, a Wi-Fi control tool |
 | `deploy/music-sync/` | the recording service, and its manifest `deploy/music-sync.yaml` |
 | `deploy/audiobook-files.yaml` | the file server for audiobooks and recordings |
-| `deploy/push_bedtime.py` | sets the player up with Home Assistant (user, registration, identity helpers, `ha.json`) |
+| `custom_components/y1_player/` | the Home Assistant integration (install with HACS as a custom repository, or copy it) |
+| `deploy/y1_setup.py` | pairs a player with the integration and makes its grown-up code |
 | `deploy/device.example.json` | the private config it reads (copy to `deploy/secrets/bedtime/device.json`) |
-| `docs/home-assistant/y1.yaml` | Home Assistant package: bedtime helpers, identity helpers, automations |
+| `deploy/music-assistant-patch/` | the Music Assistant patch, with how to mount it |
 | `rom/` | scripts that slim the Solar ROM down to this app, the Bluetooth shim installer, time zone data, Find My keys |
 | `docs/NOTES.md` | how it was built and the traps found on the way (start here before changing anything low level) |
 
 The Music Assistant patch (`library_remove` for Apple Music through the web player endpoint, scoped to the requesting
-user's accounts) is a `sitecustomize.py` mounted into the stock image; see `docs/NOTES.md`.
+user's accounts) is a `sitecustomize.py` mounted into the stock image; see `deploy/music-assistant-patch/`.
 
 ## Setting one up
 
@@ -79,13 +84,15 @@ android-17 platform, JDK, and [zig](https://ziglang.org/) for the native helpers
 3. **music-sync and the file server:** fill in `deploy/music-sync.yaml` (the child's provider instance, names) and
    `deploy/audiobook-files.yaml`, create the `music-sync-token` secret (admin token, plus the child's token as
    `play_token`), then `kubectl apply` them.
-4. **Home Assistant:** add `docs/home-assistant/y1.yaml` as a package, copy `deploy/device.example.json` to
-   `deploy/secrets/bedtime/device.json` and fill it in, then run `deploy/push_bedtime.py secret`, `child`, `identity`
-   and `push` (and `op VAULT` to put the grown-up code in 1Password).
-5. **The app:** `MA_HOST=<server> deploy/deploy_y1.sh` builds, installs and points the app at Music Assistant.
+4. **The app:** `MA_HOST=<server> deploy/deploy_y1.sh` builds, installs and points the app at Music Assistant.
+5. **Home Assistant:** install the Y1 Player integration (HACS custom repository, or copy
+   `custom_components/y1_player` into your config) and restart. Copy `deploy/device.example.json` to
+   `deploy/secrets/bedtime/device.json` and fill it in, then run `deploy/y1_setup.py secret` and `pair` (and
+   `op VAULT` to put the grown-up code in 1Password). To pair by hand instead, add the integration in Home Assistant
+   and paste the player key shown at the bottom of the player's About screen.
 
-The identity (name, "if found" contact, home Wi-Fi, speakers Home Assistant already counts) can be changed any time in
-Home Assistant; the player picks it up on its next sync.
+Every setting is then on the player's device page in Home Assistant. To share the bedtime budget with other speakers,
+link the bedtime controls to your existing helpers in the integration's options.
 
 ## Status
 

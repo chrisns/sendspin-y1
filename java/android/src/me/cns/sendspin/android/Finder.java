@@ -7,7 +7,7 @@ import android.media.AudioTrack;
 import android.os.PowerManager;
 
 /**
- * "Find my Y1": a button in Home Assistant (HaClient.entity("find"), default input_button.y1_find) makes the device ring a loud
+ * "Find my Y1": the Find it button on the player's device in Home Assistant makes the device ring a loud
  * two-note chime for a minute, until any button is pressed. It rings on the alarm stream at full volume, so neither the
  * volume limit nor a quiet setting can hide it, and Android plays alarms on the speaker even with headphones connected.
  */

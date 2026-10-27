@@ -117,13 +117,14 @@ Home Assistant's the child rules (`the bedtime package`, automation `the bedtime
 The iPod shares that budget: it adds its own playing minutes to `the used-minutes counter` (her room
 speaker is counted by HA itself), and locks to a night-sky screen when the budget is spent.
 
-- How it talks to HA: as a mobile app device, like the companion app (`HaClient`), registered as the read-only HA user
-  "the child" by `deploy/push_bedtime.py child` (makes the user once, logs in as her, registers; reply kept in
-  `deploy/secrets/bedtime/ha_registration.json`). `push` gives the iPod only the device's webhook (home URL first, the
-  Nabu Casa cloudhook as fallback) and the unlock secret. Settings are read with `render_template`. It changes nothing
-  itself: it fires `the played event` {minutes} and `the unlocked event` {until}, and the automations "the player: add
-  its bedtime minutes" (input_number.increment, so the Sonos count is never overwritten) and "... tell the parent about a
-  grown-up unlock" act on them, accepting only events from the child's user.
+- How it talks to HA: through its own integration, Y1 Player (`custom_components/y1_player`), which
+  replaced the earlier mobile_app device. The player has an X25519 key pair (`files/device.key`, made on first run,
+  never leaves it) and holds no Home Assistant token. `deploy/y1_setup.py pair` reads its public key over adb, adds it
+  to the integration (config flow, unique id = the key), links the bedtime controls to existing helpers if asked, and
+  pushes `files/ha.json` (webhook, cloudhook, the integration's public key, the unlock secret). Each sync is one
+  ChaCha20-Poly1305 message (keys from HKDF over the X25519 secret, counter against replay) carrying sensors, location,
+  played minutes {minutes, seq} and unlocks; the sealed reply carries every setting, the bedtime budget and any find
+  request. Settings carry a change time each way: newest wins, and a new pairing adopts the player's current values.
 - Limits of read-only (tested 26 Oct): it cannot control entities, but HA cannot stop a mobile app device calling
   services that target no entity: scripts called directly (`script.alarm_disarm`...), shell_command, rest_command,
   notify. Accepted as enough; the full lockdown (webhook triggers only, settings via music-sync) was offered and declined.
@@ -149,9 +150,10 @@ speaker is counted by HA itself), and locks to a night-sky screen when the budge
   current one: `rom/tzdata/make_android_tzdata.py` builds the Android 4.2 zoneinfo files (`rom/tzdata/legacy`) from
   the Mac's IANA zoneinfo; `rom/tzdata/install_zoneinfo.sh` installs them (also run by `rom/make-player-rom.sh`).
 - Grown-up code: 5-digit TOTP (30 s, each code once, accepted up to 90 s late) lifts the limit for 8 hours and
-  notifies a parent's phone. `deploy/push_bedtime.py secret | op VAULT | check | push`.
-- HA over HTTPS on Android 4.2 needs Conscrypt (`java/android/libs`, TLS 1.2 GCM) and the Let's Encrypt roots in
-  `assets/certs` (chain is YR1 > Root YR > ISRG Root X1). URLs: your Home Assistant, then the Nabu Casa remote URL.
+  notifies a parent's phone. `deploy/y1_setup.py secret | op VAULT | check | pair`.
+- HA over HTTPS on Android 4.2 needs Conscrypt (`java/android/libs`, TLS 1.2 GCM) and the roots in `assets/certs`:
+  Let's Encrypt (chain is YR1 > Root YR > ISRG Root X1) and Amazon Root CA 1 (hooks.nabu.casa: without it the
+  cloudhook, so syncing away from home, failed with "Trust anchor for certification path not found"). URLs: your Home Assistant, then the Nabu Casa remote URL.
 - Traps: never pipe secrets into `adb shell cat` (some adb/device pairs echo stdin back, and it hangs without EOF):
   `adb push` a temp file. Android 4.2/5 have no `stat`/`awk`: get the app uid from `dumpsys package`.
 
@@ -191,7 +193,7 @@ presses for testing: `sendevent /dev/input/event0 1 232 1/0` (the wheel itself i
 - Chapters: from MA's audiobook metadata, cached in files/chapters/ for offline. Next/Previous jump chapters (Previous
   within 4 s of a start goes back one); holding them, or fast forward/rewind, skips 30 s. Book page has a Chapters list,
   Now Playing shows "Chapter N of M".
-- Find it: Home Assistant button `the find button (input_button)`. The iPod checks every 30 s on Wi-Fi and rings a
+- Find it: the integration's Find it button. The iPod syncs every 30 s on Wi-Fi and rings a
   chime on the alarm stream at full volume for 60 s (any button stops it). Presses older than 10 minutes are ignored.
 - Self-healing audio: playing on the iPod but the position stuck 8 s (15 s while preparing) restarts the player where it
   was; still stuck 15 s later on Bluetooth reboots the iPod, at most once in 6 hours (`watchdogRebootAt`). Restarting
@@ -203,9 +205,9 @@ An adversarial review (REVIEW-2026-10-26.md) confirmed 70 defects; all are fixed
 - adb needs the maintainer's key: `/data/misc/adb/adb_keys` plus `ro.adb.secure=1` set by `99PlayerInit.sh` at boot (no keys
   file: left open, nobody locked out). Another computer gets "unauthorized". The same script resets MediaTek's xlog
   filter to info after the adbd restart (otherwise only errors are logged).
-- Home Assistant payloads are encrypted (mobile_app `supports_encryption`, SecretBox.java, checked against PyNaCl), so
-  the Nabu Casa cloudhook sees ciphertext; `push_bedtime.py child` + `push` re-register. Minutes events carry a `seq`
-  that the automation dedupes (`the played-seq input_text helper`); failover to the cloudhook only when nothing was sent.
+- Home Assistant payloads are encrypted end to end (now by the Y1 Player integration, see above), so the Nabu Casa
+  cloudhook sees ciphertext. Played minutes carry a `seq` the integration dedupes; failover to the cloudhook only when
+  nothing was sent.
 - Bedtime: HA's counter is adopted only for the same night (template `night`, HA's own time zone), not in the first
   2 minutes of the window, and never when it is unusable (counts locally instead). Next/Previous respect the lock.
   The grown-up session uses elapsedRealtime and ends when the screen goes off. Joining or forgetting Wi-Fi needs the code.

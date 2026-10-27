@@ -1,74 +1,54 @@
 package me.cns.sendspin.android;
 
 import android.content.Context;
+import android.util.Base64;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import me.cns.sendspin.Crypto;
 import me.cns.sendspin.Json;
 
 /**
- * Home Assistant, as a mobile app device (the same API as the companion app): the player is a device in Home Assistant
- * with its own sensors, and reads and updates the shared bedtime budget. No user token on the device: it was registered
- * once from a computer (deploy/push_bedtime.py child) as a read-only Home Assistant user and only holds the device's
- * webhook. It changes nothing directly: it fires events that automations act on (adding its minutes, telling a parent
- * about an unlock). Deleting the device in Home Assistant revokes it (the webhook then answers 410).
+ * Home Assistant, through the Y1 Player integration (custom_components/y1_player). The player holds no
+ * Home Assistant token: it has its own X25519 key pair (files/device.key, made on first use, never leaves the device)
+ * and knows the integration's public key. Each sync is one sealed message to the integration's webhook carrying the
+ * player's sensors, location, bedtime minutes and grown-up unlocks; the sealed reply carries its settings, the bedtime
+ * budget and "find" requests. The integration does nothing else for it, and removing the player in Home Assistant
+ * revokes it.
  *
- * Settings come from files/ha.json (pushed by deploy/push_bedtime.py push, never in the APK):
+ * Message: {"n": base64(nonce[12]), "c": base64(ChaCha20-Poly1305(key, nonce, aad "y1/1", json))}, keys from
+ * HKDF("y1-player v1", X25519(player, integration)): the first player-to-integration, the second back. The json
+ * carries a counter "c" that only ever goes up, so a captured message cannot be replayed.
+ *
+ * Settings from files/ha.json (written by deploy/y1_setup.py pair, never in the APK):
  * {"local_url": "https://homeassistant.local:8123", "webhook_id": "...", "cloudhook_url": "https://hooks.nabu.casa/...",
- *  "totp": "BASE32", "secret": "hex", "entities": {...}, "events": {...}, "sensor_prefix": "y1_"}.
- * entities/events/sensor_prefix name the Home Assistant helpers this device uses (see entity(), defaults y1_*).
+ *  "server_public_key": "base64", "totp": "BASE32"}.
  * The home address is tried first, then the Nabu Casa cloudhook, so it works on any Wi-Fi.
  */
 public final class HaClient {
+    private static final byte[] AAD = { 'y', '1', '/', '1' };
+    private static final SecureRandom RNG = new SecureRandom();
+
     private final Context app;
     private final TrustedClock clock;
     private final List<String> hooks = new ArrayList<String>();   // full webhook URLs, home first
     private int good;                     // index of the URL that answered last
     public byte[] totpKey;
-    private byte[] boxKey, legacyKey;     // payload encryption (registered with supports_encryption): see SecretBox
-    private Map<String, Object> entities = new HashMap<String, Object>(), events = new HashMap<String, Object>();
-    private String sensorPrefix = "y1_";
-    /** First-boot identity values from setup (owner_name, device_name, ...): used until Home Assistant has been read. */
-    public volatile Map<String, Object> identity = new HashMap<String, Object>();
-
-    /** Generic Home Assistant helper names; ha.json "entities" overrides any of them. */
-    private static final String[][] DEFAULT_ENTITIES = {
-        { "window_start", "input_datetime.y1_bedtime_start" }, { "window_end", "input_datetime.y1_bedtime_end" },
-        { "cap", "input_number.y1_bedtime_cap_minutes" }, { "used", "input_number.y1_bedtime_used_minutes" },
-        { "find", "input_button.y1_find" },
-        { "owner_name", "input_text.y1_owner_name" }, { "device_name", "input_text.y1_device_name" },
-        { "lost_contact", "input_text.y1_lost_contact" }, { "home_wifi", "input_text.y1_home_wifi" },
-        { "counted_speakers", "input_text.y1_counted_speakers" },
-    };
-
-    /** The entity id this device uses for key (window_start, cap, find, owner_name, ...). */
-    public String entity(String key) {
-        Object v = entities.get(key);
-        if (v != null) return String.valueOf(v);
-        for (String[] d : DEFAULT_ENTITIES) if (d[0].equals(key)) return d[1];
-        return null;
-    }
-
-    /** The event type for key ("played", "unlocked"): ha.json "events", default y1_<key>. */
-    public String eventName(String key) {
-        Object v = events.get(key);
-        return v != null ? String.valueOf(v) : "y1_" + key;
-    }
-
-    /** Prefix of this device's sensor unique ids (keep it once chosen: changing it makes new sensors in HA). */
-    public String sensorPrefix() { return sensorPrefix; }
+    private byte[] kOut, kIn;             // player-to-integration, integration-to-player
+    private long loaded;                  // ha.json's time when read
     public volatile String lastError = "";
-    public volatile boolean removed;      // the device was deleted in Home Assistant (410)
+    public volatile boolean removed;      // the integration no longer knows this player: pair it again
 
     public HaClient(Context c, TrustedClock clk) {
         app = c;
@@ -76,82 +56,72 @@ public final class HaClient {
         reload();
     }
 
-    @SuppressWarnings("unchecked")
-    public synchronized void reload() {
-        hooks.clear();
-        totpKey = null;
-        boxKey = null;
-        legacyKey = null;
-        removed = false;
+    /** This player's private key, made on first use. */
+    private synchronized byte[] privateKey() {
+        File f = new File(app.getFilesDir(), "device.key");
         try {
-            Map<String, Object> m = Json.obj(Net.readText(new File(app.getFilesDir(), "ha.json")));
-            Object id = m.get("webhook_id"), local = m.get("local_url"), cloud = m.get("cloudhook_url");
-            if (id != null && local != null) hooks.add(String.valueOf(local).replaceAll("/+$", "") + "/api/webhook/" + id);
-            if (cloud != null) hooks.add(String.valueOf(cloud));
-            if (m.get("totp") != null) totpKey = Totp.base32(String.valueOf(m.get("totp")));
-            entities = m.get("entities") instanceof Map ? Json.map(m.get("entities")) : new HashMap<String, Object>();
-            events = m.get("events") instanceof Map ? Json.map(m.get("events")) : new HashMap<String, Object>();
-            sensorPrefix = m.get("sensor_prefix") != null ? String.valueOf(m.get("sensor_prefix")) : "y1_";
-            identity = m.get("identity") instanceof Map ? Json.map(m.get("identity")) : new HashMap<String, Object>();
-            if (m.get("secret") != null) {   // HA's hex secret: the key is its bytes (older replies use the text itself)
-                String sec = String.valueOf(m.get("secret"));
-                boxKey = Crypto.hex(sec);
-                legacyKey = java.util.Arrays.copyOf(sec.getBytes("UTF-8"), 32);
+            if (f.length() == 32) {
+                byte[] k = new byte[32];
+                InputStream in = new FileInputStream(f);
+                try { if (in.read(k) == 32) return k; } finally { in.close(); }
             }
-        } catch (Exception e) {
-            lastError = "not set up";
-            if (new File(app.getFilesDir(), "ha.json").exists()) android.util.Log.i("ab", "ha.json unreadable: " + e);
+            byte[] k = Crypto.newPrivateKey();
+            File tmp = new File(f.getPath() + ".tmp");
+            FileOutputStream o = new FileOutputStream(tmp);
+            try { o.write(k); o.getFD().sync(); } finally { o.close(); }
+            if (!tmp.renameTo(f)) throw new IOException("could not save the key");
+            return k;
+        } catch (IOException e) {
+            throw new IllegalStateException("player key: " + e.getMessage());
         }
     }
 
-    private long loadedStamp = -1;
+    /** What to pair with in Home Assistant (shown under About; files/device.pub is read by y1_setup.py pair). */
+    public String publicKey() {
+        String p = Base64.encodeToString(Crypto.publicKey(privateKey()), Base64.NO_WRAP);
+        File f = new File(app.getFilesDir(), "device.pub");
+        if (f.length() != p.length()) {
+            try {
+                FileOutputStream o = new FileOutputStream(f);
+                try { o.write(p.getBytes("UTF-8")); } finally { o.close(); }
+            } catch (IOException ignored) { }
+        }
+        return p;
+    }
 
-    /** Pick up a freshly pushed ha.json (deploy/push_bedtime.py) without a restart. */
+    public synchronized void reload() {
+        hooks.clear();
+        totpKey = null;
+        kOut = kIn = null;
+        removed = false;
+        publicKey();
+        File f = new File(app.getFilesDir(), "ha.json");
+        loaded = f.lastModified();
+        try {
+            Map<String, Object> m = Json.obj(Net.readText(f));
+            Object id = m.get("webhook_id"), local = m.get("local_url"), cloud = m.get("cloudhook_url"), spub = m.get("server_public_key");
+            if (m.get("totp") != null) totpKey = Totp.base32(String.valueOf(m.get("totp")));
+            if (spub == null) return;
+            byte[] shared = Crypto.x25519(privateKey(), Base64.decode(String.valueOf(spub), Base64.DEFAULT));
+            byte[][] k = Crypto.hkdf("y1-player v1".getBytes("UTF-8"), shared, 2);
+            kOut = k[0];
+            kIn = k[1];
+            if (id != null && local != null) hooks.add(String.valueOf(local).replaceAll("/+$", "") + "/api/webhook/" + id);
+            if (cloud != null) hooks.add(String.valueOf(cloud));
+        } catch (Exception e) {
+            hooks.clear();
+        }
+    }
+
+    /** ha.json was replaced (a new pairing): read it again. */
     public void maybeReload() {
-        long m = new File(app.getFilesDir(), "ha.json").lastModified();
-        if (m != loadedStamp) { loadedStamp = m; reload(); }
+        if (new File(app.getFilesDir(), "ha.json").lastModified() != loaded) reload();
     }
 
     public boolean configured() { return !hooks.isEmpty() && !removed; }
 
-    /** Render named templates in Home Assistant: name -> template in, name -> result out. */
-    public Map<String, Object> templates(Map<String, String> named) throws IOException {
-        Map<String, Object> data = new LinkedHashMap<String, Object>();
-        for (Map.Entry<String, String> e : named.entrySet()) data.put(e.getKey(), args("template", e.getValue()));
-        return Json.map(Json.parse(webhook("render_template", data)));
-    }
-
-    /**
-     * Fire an event for Home Assistant's automations to act on (eventName("played"), eventName("unlocked")). The device
-     * is a read-only Home Assistant user, so it cannot change entities itself; the automations only accept its events.
-     */
-    public void event(String type, Map<String, Object> data) throws IOException {
-        webhook("fire_event", args("event_type", type, "event_data", data));
-    }
-
-    /** Create or refresh one sensor (re-registering updates it). type is "sensor" or "binary_sensor". */
-    public void registerSensor(Map<String, Object> sensor) throws IOException {
-        webhook("register_sensor", sensor);
-    }
-
-    /** Update sensor states; returns the unique ids Home Assistant does not know yet (to register them). */
-    @SuppressWarnings("unchecked")
-    public List<String> updateSensors(List<Map<String, Object>> states) throws IOException {
-        List<String> missing = new ArrayList<String>();
-        Object r = Json.parse(webhook("update_sensor_states", states));
-        if (r instanceof Map) {
-            for (Map.Entry<String, Object> e : ((Map<String, Object>) r).entrySet()) {
-                Object v = e.getValue();
-                if (v instanceof Map && Boolean.FALSE.equals(((Map<String, Object>) v).get("success"))) missing.add(e.getKey());
-            }
-        }
-        return missing;
-    }
-
-    /** Where the iPod is, for its device tracker: GPS coordinates, or a zone name ("home", "not_home"). */
-    public void location(Map<String, Object> data) throws IOException {
-        webhook("update_location", data);
-    }
+    /** On home Wi-Fi: go back to trying the home address first (the cloudhook is only for away). */
+    public void preferHome() { good = 0; }
 
     public static Map<String, Object> args(Object... kv) {
         Map<String, Object> m = new HashMap<String, Object>();
@@ -162,44 +132,74 @@ public final class HaClient {
     /** The request never reached Home Assistant (no connection), so another URL may safely be tried. */
     static final class NotSent extends IOException { NotSent(String m) { super(m); } }
 
-    /** On home Wi-Fi: go back to trying the home address first (the cloudhook is only for away). */
-    public void preferHome() { good = 0; }
+    /** Our counter was behind the integration's (after a reinstall): it told us where it is. */
+    static final class Behind extends IOException { final long last; Behind(long l) { super("counter behind"); last = l; } }
 
-    private String webhook(String type, Object data) throws IOException {
-        if (!configured()) throw new IOException(removed ? "removed from Home Assistant" : "Home Assistant not set up");
-        String body = boxKey == null ? Json.write(args("type", type, "data", data))
-            : Json.write(args("type", type, "encrypted", Boolean.TRUE, "encrypted_data",
-                android.util.Base64.encodeToString(SecretBox.seal(boxKey, Json.write(data).getBytes("UTF-8")), android.util.Base64.NO_WRAP)));
+    /** One sync: report what is in it; the reply has the settings, bedtime and any find request. */
+    public Map<String, Object> sync(Map<String, Object> report) throws IOException {
+        try {
+            return send(report);
+        } catch (Behind b) {
+            synchronized (this) { if (b.last > counter()) setCounter(b.last); }
+            return send(report);
+        }
+    }
+
+    private long counter() { return app.getSharedPreferences("ha", 0).getLong("counter", 0); }
+    private void setCounter(long v) { app.getSharedPreferences("ha", 0).edit().putLong("counter", v).commit(); }
+
+    /** Above every counter sent before, and kept across restarts. */
+    private synchronized long nextCounter() {
+        long c = Math.max(counter() + 1, System.currentTimeMillis());
+        setCounter(c);
+        return c;
+    }
+
+    private Map<String, Object> send(Map<String, Object> report) throws IOException {
+        if (!configured()) throw new IOException(removed ? "not paired in Home Assistant: pair it again" : "Home Assistant not set up");
+        Map<String, Object> msg = new HashMap<String, Object>(report);
+        msg.put("c", Long.valueOf(nextCounter()));
+        byte[] nonce = new byte[12];
+        RNG.nextBytes(nonce);
+        byte[] ct = Crypto.aeadEncrypt(kOut, nonce, AAD, Json.write(msg).getBytes("UTF-8"));
+        String body = Json.write(args("n", Base64.encodeToString(nonce, Base64.NO_WRAP), "c", Base64.encodeToString(ct, Base64.NO_WRAP)));
         IOException last = null;
         for (int k = 0; k < hooks.size(); k++) {
             int i = (good + k) % hooks.size();
             try {
-                String r = decrypt(post(hooks.get(i), body));
+                Map<String, Object> r = open(post(hooks.get(i), body));
+                if (r.get("c") == null && r.get("last") instanceof Number) throw new Behind(((Number) r.get("last")).longValue());
                 good = i;
                 lastError = "";
                 return r;
             } catch (NotSent e) {
                 last = e;                       // never reached this URL: try the next
+            } catch (Behind e) {
+                throw e;
             } catch (IOException e) {
                 last = e;
-                if (removed || type.equals("fire_event")) break;   // an event may have been counted: never replay it elsewhere
+                break;                          // it may have arrived: never resend it elsewhere (the next sync follows)
             }
         }
         lastError = last.getMessage();
         throw last;
     }
 
-    /** An encrypted reply ({"encrypted": true, "encrypted_data": ...}) as its plain JSON; anything else as it is. */
     @SuppressWarnings("unchecked")
-    private String decrypt(String reply) throws IOException {
-        if (boxKey == null || !reply.contains("encrypted_data")) return reply;
-        Object o = Json.parse(reply);
-        if (!(o instanceof Map) || !Boolean.TRUE.equals(((Map<String, Object>) o).get("encrypted"))) return reply;
-        byte[] box = android.util.Base64.decode(String.valueOf(((Map<String, Object>) o).get("encrypted_data")), android.util.Base64.DEFAULT);
-        byte[] plain = SecretBox.open(boxKey, box);
-        if (plain == null) plain = SecretBox.open(legacyKey, box);
-        if (plain == null) throw new IOException("Home Assistant reply could not be decrypted");
-        return new String(plain, "UTF-8");
+    private Map<String, Object> open(String reply) throws IOException {
+        Object o = reply.length() == 0 ? null : Json.parse(reply);
+        if (!(o instanceof Map) || ((Map<String, Object>) o).get("n") == null) {
+            removed = true;                     // Home Assistant answers an unknown webhook with an empty 200
+            throw new IOException("not paired in Home Assistant: pair it again");
+        }
+        Map<String, Object> m = (Map<String, Object>) o;
+        try {
+            byte[] pt = Crypto.aeadDecrypt(kIn, Base64.decode(String.valueOf(m.get("n")), Base64.DEFAULT), AAD,
+                Base64.decode(String.valueOf(m.get("c")), Base64.DEFAULT));
+            return Json.obj(new String(pt, "UTF-8"));
+        } catch (RuntimeException e) {
+            throw new IOException("Home Assistant reply could not be decrypted");
+        }
     }
 
     private String post(String url, String body) throws IOException {
@@ -218,17 +218,16 @@ public final class HaClient {
         }
         int code = c.getResponseCode();
         clock.fromHttpDate(c.getHeaderField("Date"));   // even a refusal carries the time
-        String host = new URL(url).getHost();
-        if (code == 410) { removed = true; throw new IOException("removed from Home Assistant: register again"); }
-        if (code / 100 != 2) throw new IOException("HTTP " + code + " from " + host);
-        InputStream in = c.getInputStream();
+        if (code == 400) { removed = true; throw new IOException("Home Assistant does not know this player's key: pair it again"); }
+        if (code != 409 && code / 100 != 2) throw new IOException("HTTP " + code + " from " + new URL(url).getHost());
+        InputStream in = code == 409 ? c.getErrorStream() : c.getInputStream();
+        if (in == null) return "";
         try {
             ByteArrayOutputStream b = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             int n;
             while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
-            String r = new String(b.toByteArray(), "UTF-8").trim();
-            return r.length() == 0 ? "{}" : r;
+            return new String(b.toByteArray(), "UTF-8").trim();
         } finally { in.close(); }
     }
 }
