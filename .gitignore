@@ -42,3 +42,4 @@ java/android/native/stt/y1-stt
 java/android/native/stt/*.bin
 java/android/native/stt/zig-arm.cmake
 java/android/native/stt/zigbin/
+java/android/native/stt/*.o
