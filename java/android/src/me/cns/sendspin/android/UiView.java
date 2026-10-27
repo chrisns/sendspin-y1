@@ -786,7 +786,9 @@ public final class UiView extends View {
                     "turn clockwise: highlight should go down", new Runnable() { public void run() { eng.setWheelReversed(!eng.wheelReversed()); } }));
                 r.add(new Row("Time: " + new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.UK).format(new java.util.Date(eng.clock.now())), "from " + eng.clock.source, null));
                 r.add(new Row("Timezone: " + eng.geo.zone(), eng.geo.source.length() > 0 ? "from " + eng.geo.source : "default", null));
-                r.add(new Row("Bedtime sync: " + (eng.ha.configured() ? "on" : "not set up"), eng.bedtimeStatus, null));
+                r.add(new Row("Home Assistant: " + (eng.ha.configured() ? "paired" : "not paired"), eng.bedtimeStatus, null));
+                String pk = eng.ha.publicKey();   // what to paste into the Y1 Player integration
+                r.add(new Row("Player key: " + pk.substring(0, 22), pk.substring(22), null));
                 r.add(new Row("Last key: " + lastKey, "wheel / buttons test", null));
                 for (String l : eng.logLines()) { Row x = new Row(l, null, null); x.header = true; r.add(x); }
                 return r;

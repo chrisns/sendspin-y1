@@ -3,8 +3,8 @@ package me.cns.sendspin.android;
 /**
  * Who the player belongs to, set from Home Assistant: the owner's first name, the device's name, the "if found"
  * contact on the lock screen, the home Wi-Fi networks and the speakers Home Assistant already counts towards the
- * bedtime budget. Each comes from an input_text helper (entity ids in ha.json, generic y1_* defaults), is read on every
- * Home Assistant sync and kept in the store, so it holds offline and after a restart. Nothing personal is in the code.
+ * bedtime budget. Each is a setting of the player's device in Home Assistant (the Y1 Player integration), arrives with
+ * every sync and is kept in the store, so it holds offline and after a restart. Nothing personal is in the code.
  */
 public final class Identity {
     private final Store store;
@@ -52,17 +52,13 @@ public final class Identity {
         return v.length() == 0 ? new String[0] : v.split("\\s*,\\s*");
     }
 
-    /** Setup's first-boot values (ha.json "identity"): fill only what Home Assistant has not set yet. */
-    public void seed(java.util.Map<String, Object> m, String[][] keys) {
-        for (String[] k : keys) if (store.str(k[1], "").length() == 0 && m.get(k[0]) != null) update(k[1], m.get(k[0]));
-    }
-
-    /** A value read from Home Assistant: kept unless empty or unknown (a helper not created yet). */
+    /** A value set in Home Assistant (empty clears it); true if it changed. */
     public boolean update(String key, Object value) {
         String v = value == null ? "" : String.valueOf(value).trim();
-        if (v.length() == 0 || v.equals("unknown") || v.equals("unavailable") || v.equals("None")) return false;
         if (v.equals(store.str(key, ""))) return false;
         store.put(key, v);
         return true;
     }
+
+    public String raw(String key) { return store.str(key, ""); }
 }

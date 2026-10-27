@@ -7,7 +7,7 @@ licences:
 |---|---|---|
 | Conscrypt 2.5.3 (TLS for Android 4.2) | `java/android/libs/` | Apache License 2.0 |
 | Inter typeface | `java/android/assets/fonts/` | SIL Open Font License 1.1 (`Inter-LICENSE.txt`) |
-| Let's Encrypt root certificates (ISRG Root X1, X2) | `java/android/assets/certs/` | public CA certificates |
+| Let's Encrypt root certificates (ISRG Root X1, X2) and Amazon Root CA 1 | `java/android/assets/certs/` | public CA certificates |
 | Time zone grid `tzgrid.bin` | `java/android/assets/` | derived from timezone-boundary-builder data via timezonefinder; the data is under the Open Database License (ODbL) 1.0, so `tzgrid.bin` is too. Rebuild it with `java/android/tools/make_tzgrid.py` |
 | IANA time zone database (built into the Android 4.2 zoneinfo files) | `rom/tzdata/legacy/` | public domain |
 

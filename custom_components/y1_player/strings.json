@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a Y1 player",
+        "description": "The player shows its public key under Settings > About (or run deploy/push_bedtime.py pair, which does all of this for you).",
+        "data": {"name": "Name", "device_public_key": "Player public key"}
+      }
+    },
+    "error": {"invalid_key": "That is not a 32-byte base64 X25519 key."},
+    "abort": {"already_configured": "This player is already added."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Bedtime links",
+        "description": "Optionally share the bedtime controls with helpers your other automations already use (for example a budget shared with the child's speakers). Leave empty for the integration's own values.",
+        "data": {
+          "link_bedtime_start": "Window start (input_datetime)",
+          "link_bedtime_end": "Window end (input_datetime)",
+          "link_bedtime_cap": "Allowance minutes (input_number)",
+          "link_bedtime_used": "Minutes used (input_number)",
+          "notify_service": "Notify when the grown-up code is used (e.g. notify.mobile_app_phone)"
+        }
+      }
+    }
+  },
+  "services": {
+    "pairing_info": {"name": "Pairing info", "description": "Webhook and public key each player needs (used by the setup script)."}
+  }
+}

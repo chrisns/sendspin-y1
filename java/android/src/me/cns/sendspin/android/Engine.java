@@ -144,7 +144,6 @@ public final class Engine {
         beacon = new FindMyBeacon(a);
         musicLib = new MusicLibrary(new File(android.os.Environment.getExternalStorageDirectory(), "Music"));
         id = new Identity(store);
-        id.seed(ha.identity, IDENTITY);
         favs = new Favourites(store, id);
         finder = new Finder(a);
         audio = (AudioManager) a.getSystemService(Context.AUDIO_SERVICE);
@@ -626,6 +625,7 @@ public final class Engine {
 
     public void setKeepAll(boolean on) {
         store.put("keepAll", Long.valueOf(on ? 1 : 0));
+        touched("keep_offline");
         if (on) pool.execute(new Runnable() { public void run() { autoNext(); } });
     }
 
@@ -1561,12 +1561,12 @@ public final class Engine {
     /** Wheel click feel: bit 1 = tick sound, bit 2 = vibration. Default both. */
     public int clickMode() { return (int) store.num("clickMode", 3); }
 
-    public void setClickMode(int m) { store.put("clickMode", Long.valueOf(m)); }
+    public void setClickMode(int m) { store.put("clickMode", Long.valueOf(m)); touched("wheel_click"); }
 
     /** 0 soft (default), 1 medium, 2 loud. */
     public int clickLevel() { return (int) store.num("clickLevel", 0); }
 
-    public void setClickLevel(int l) { store.put("clickLevel", Long.valueOf(l)); }
+    public void setClickLevel(int l) { store.put("clickLevel", Long.valueOf(l)); touched("click_loudness"); }
 
     /** Speakers play a little behind what Music Assistant reports; this nudges the lyrics to match (ms, -1000..+1000). */
     public int lyricOffsetMs() { return (int) store.num("lyricOff", 0); }
@@ -1578,13 +1578,13 @@ public final class Engine {
     /** Hold: quiet seconds before the buttons stop (0 = never), and how fast the three unlocking presses must be. */
     public int holdIdleS() { return (int) store.num("holdIdle", 60); }
 
-    public void setHoldIdleS(int s) { store.put("holdIdle", Long.valueOf(s)); hold.idleS = s; }
+    public void setHoldIdleS(int s) { store.put("holdIdle", Long.valueOf(s)); hold.idleS = s; touched("hold_after"); }
 
     public int holdWindowMs() { return (int) store.num("holdWin", 1000); }
 
-    public void setHoldWindowMs(int ms) { store.put("holdWin", Long.valueOf(ms)); hold.windowMs = ms; }
+    public void setHoldWindowMs(int ms) { store.put("holdWin", Long.valueOf(ms)); hold.windowMs = ms; touched("unlock_speed"); }
 
-    public void setWheelReversed(boolean on) { store.put("wheelRev", Long.valueOf(on ? 1 : 0)); }
+    public void setWheelReversed(boolean on) { store.put("wheelRev", Long.valueOf(on ? 1 : 0)); touched("wheel_reversed"); }
 
     public boolean speakerAlways() { return store.num("speakerAlways", 0) == 1; }
 
@@ -1592,6 +1592,7 @@ public final class Engine {
 
     public void setSpeakerAlways(boolean on) {
         store.put("speakerAlways", Long.valueOf(on ? 1 : 0));
+        touched("speaker_always_on");
         if (on) startSpeaker(); else if (!(musicMode && playing && ownAudio())) stopSpeaker();
     }
 
@@ -1796,7 +1797,7 @@ public final class Engine {
     /** Highest music volume allowed, in percent; 100 = no limit. */
     public int volumeLimit() { return (int) store.num("volLimit", 100); }
 
-    public void setVolumeLimit(int p) { store.put("volLimit", Long.valueOf(p)); enforceVolumeLimit(); }
+    public void setVolumeLimit(int p) { store.put("volLimit", Long.valueOf(p)); touched("volume_limit"); enforceVolumeLimit(); }
 
     private void enforceVolumeLimit() {
         int lim = volumeLimit();
@@ -1812,6 +1813,7 @@ public final class Engine {
 
     public void setFindMyEnabled(boolean on) {
         store.put("findmy", Long.valueOf(on ? 1 : 0));
+        touched("find_my");
         pool.execute(new Runnable() { public void run() { beaconTick(); } });
     }
 
@@ -1938,37 +1940,28 @@ public final class Engine {
         }
     }
 
-    // ---- "Find my Y1" (Home Assistant button): checked every 30 s on Wi-Fi
+    // ---- "Find my Y1" (the Find it button in Home Assistant): in every sync's reply, synced every 30 s on Wi-Fi
 
     private volatile long findAt;
     private static final String WAKE_ACTION = "me.cns.ab.WAKE";
     private PowerManager.WakeLock wakeLock, remoteLock;
-    private final java.util.concurrent.atomic.AtomicBoolean findBusy = new java.util.concurrent.atomic.AtomicBoolean();
 
-    private void checkFind() {
+    /** The reply's find request (ms, Home Assistant's clock): ring once for a fresh press. */
+    private void handleFind(Map<String, Object> r) {
+        String v = r.get("find") == null ? "" : String.valueOf(r.get("find"));
+        String seen = store.str("findSeen", "");
+        if (v.length() == 0 || v.equals(seen)) return;
+        store.put("findSeen", v);
         try {
-            Map<String, String> q = new LinkedHashMap<String, String>();
-            q.put("find", "{{ states('" + ha.entity("find") + "') }}");
-            String v = String.valueOf(ha.templates(q).get("find"));
-            String seen = store.str("findSeen", "");
-            if (v.length() < 19 || !Character.isDigit(v.charAt(0))) {         // never pressed ("unknown"), or unavailable
-                if (seen.length() == 0 && v.equals("unknown")) store.put("findSeen", v);
-                return;
-            }
-            if (v.equals(seen)) return;
-            store.put("findSeen", v);
-            if (seen.length() == 0) return;                                  // first look: remember it, do not ring
-            java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US);
-            f.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));            // input_button states are UTC
-            long at = f.parse(v.substring(0, 19)).getTime();
-            if (Math.abs(clock.now() - at) > 10 * 60000L) return;           // an old press (the iPod was off): ignore
-            log("find: ringing (pressed in Home Assistant)");
-            if (playing && ownAudio()) pause();
-            say("Here I am! Press any button");
-            finder.ring(60);
-        } catch (Exception e) {
-            log("find: " + e.getMessage());
+            long at = Long.parseLong(v), now = r.get("now") instanceof Number ? ((Number) r.get("now")).longValue() : clock.now();
+            if (now - at > 10 * 60000L) return;                           // an old press (the iPod was off): ignore
+        } catch (NumberFormatException e) {
+            return;
         }
+        log("find: ringing (pressed in Home Assistant)");
+        if (playing && ownAudio()) pause();
+        say("Here I am! Press any button");
+        finder.ring(60);
     }
 
     private void tick() {
@@ -1994,9 +1987,9 @@ public final class Engine {
         boolean holdAwake = playing && !ownAudio() && countsNow();
         if (holdAwake && !remoteLock.isHeld()) remoteLock.acquire();
         else if (!holdAwake && remoteLock.isHeld()) remoteLock.release();
-        if (tnow - findAt > 30000 && ha.configured() && onWifi() && findBusy.compareAndSet(false, true)) {
+        if (tnow - findAt > 30000 && ha.configured() && haFailures == 0 && onWifi() && haBusy.compareAndSet(false, true)) {
             findAt = tnow;
-            pool.execute(new Runnable() { public void run() { try { checkFind(); } finally { findBusy.set(false); } } });
+            pool.execute(new Runnable() { public void run() { try { bedtimeSync(); } finally { haBusy.set(false); } } });
         }
         enforceVolumeLimit();
         try {
@@ -2138,8 +2131,6 @@ public final class Engine {
     /** Time, timezone and the shared counter, whenever there is Wi-Fi. */
     private void bedtimeSync() {
         ha.maybeReload();
-        sensorPrefix = ha.sensorPrefix();
-        id.seed(ha.identity, IDENTITY);
         long el = android.os.SystemClock.elapsedRealtime();
         boolean wifi = onWifi();
         if (wifi && (ntpAt == 0 || el - ntpAt > 3600000L)) ntpAt = clock.syncNtp() ? el : el - 3300000L;   // retry in 5 min
@@ -2149,47 +2140,46 @@ public final class Engine {
         if (!ha.configured()) { bedtimeStatus = ha.removed ? "removed from Home Assistant: register it again" : "Home Assistant not set up"; return; }
         try {
             long now = clock.now();
-            Map<String, String> q = new LinkedHashMap<String, String>();
-            q.put("start", "{{ states('" + ha.entity("window_start") + "') }}");
-            q.put("end", "{{ states('" + ha.entity("window_end") + "') }}");
-            q.put("cap", "{{ states('" + ha.entity("cap") + "') }}");
-            q.put("used", "{{ states('" + ha.entity("used") + "') }}");
-            // who the device belongs to (owner, device name, lost contact, home Wi-Fi), set in Home Assistant
-            for (String[] k : IDENTITY) q.put(k[0], "{{ states('" + ha.entity(k[0]) + "') }}");
-            // which night HA's counter belongs to, in HA's own time zone (it resets at its window start)
-            q.put("night", "{% set s = states('" + ha.entity("window_start") + "') %}"
-                + "{% set e = states('" + ha.entity("window_end") + "') %}{% set t = now().strftime('%H:%M:%S') %}"
-                + "{% if t >= s %}{{ now().date() }}{% elif t < e %}{{ (now() - timedelta(days=1)).date() }}{% else %}none{% endif %}");
-            Map<String, Object> r = ha.templates(q);
-            boolean renamed = false;
-            for (String[] k : IDENTITY) renamed |= id.update(k[1], r.get(k[0])) && k[0].equals("device_name");
-            if (renamed && targetId.length() == 0) targetName = id.device();
-            int ws = Bedtime.parseHhmm(String.valueOf(r.get("start")), bedtime.startMin);
-            int we = Bedtime.parseHhmm(String.valueOf(r.get("end")), bedtime.endMin);
-            int cap = intOf(r.get("cap"), bedtime.capMin);
-            int used = intOf(r.get("used"), -1);
-            if (used < 0 || cap <= 0) {    // no usable counter ("unknown", a template error): keep counting here, never fail open
+            Map<String, Object> rep = new HashMap<String, Object>();
+            rep.put("sensors", sensorValues(now));
+            rep.put("settings", settingsReport());
+            final Map<String, Object> loc = locationReport();
+            if (loc != null) rep.put("location", loc);
+            int n = 0;
+            long seq = store.num("playedSeq", 1);
+            // the integration adds our minutes to the shared counter itself, so minutes counted there at the same
+            // moment (her Sonos) are never overwritten; seq stays the same until it has answered, so a resend after a
+            // lost reply is recognised and not counted twice
+            if (bedtime.localUnsent > 0 && bedtime.inWindow(now)) {
+                n = Math.min(bedtime.localUnsent, 60);
+                rep.put("played", HaClient.args("minutes", Integer.valueOf(n), "seq", Long.valueOf(seq)));
+            }
+            long unl = unlockPending;
+            if (unl > 0) rep.put("unlocked_until", Long.valueOf(unl));
+            Map<String, Object> r = ha.sync(rep);
+            if (n > 0) store.put("playedSeq", Long.valueOf(seq + 1));
+            if (unl > 0 && unlockPending == unl) unlockPending = 0;
+            if (loc != null) locationSent();
+            applySettings(r.get("settings"));
+            handleFind(r);
+            Map<String, Object> b = r.get("bedtime") instanceof Map ? Json.map(r.get("bedtime")) : new HashMap<String, Object>();
+            int ws = Bedtime.parseHhmm(String.valueOf(b.get("start")), bedtime.startMin);
+            int we = Bedtime.parseHhmm(String.valueOf(b.get("end")), bedtime.endMin);
+            int cap = intOf(b.get("cap"), -1);
+            int used = intOf(b.get("used"), -1);
+            if (used < 0 || cap <= 0) {    // a linked counter is unavailable: keep counting here, never fail open
+                saveBedtime();
                 bedtimeStatus = "Home Assistant: bedtime counter unavailable";
+                haFailures = 0;
                 return;
             }
-            Object nightObj = r.get("night");
+            Object nightObj = b.get("night");
             String night = nightObj == null ? null : String.valueOf(nightObj).trim();
             if (night != null && !night.matches("\\d{4}-\\d{2}-\\d{2}|none")) night = null;
+            if (n > 0) bedtime.sent(n, used);     // its counter already includes them
             bedtime.applyServer(ws, we, cap, used, now, night);
-            int unsent = bedtime.localUnsent;
-            if (unsent > 0 && bedtime.inWindow(now)) {
-                // the Home Assistant automation that adds the bedtime minutes adds them with its own increment, so minutes
-                // counted there at the same moment (her Sonos) are never overwritten
-                // seq stays the same until HA has answered, so a resend after a lost reply is recognised and not counted twice
-                int n = Math.min(unsent, 60);
-                long seq = store.num("playedSeq", 1);
-                ha.event(ha.eventName("played"), HaClient.args("minutes", Integer.valueOf(n), "seq", Long.valueOf(seq)));
-                store.put("playedSeq", Long.valueOf(seq + 1));
-                bedtime.sent(n, used + n);
-            }
             saveBedtime();
-            reportSensors(now);
-            reportLocation();
+            sensorSig = sensorSignature(now);
             bedtimeStatus = "in step with Home Assistant";
             haFailures = 0;
         } catch (IOException ex) {
@@ -2201,86 +2191,127 @@ public final class Engine {
     // ---- the iPod as a device in Home Assistant: its sensors (registered on first use)
 
     private String sensorSig = "";
-    private static volatile String sensorPrefix = "y1_";   // from ha.json (HaClient.sensorPrefix)
-
-    /** Identity helpers read from Home Assistant: template key / store key (Identity). */
-    private static final String[][] IDENTITY = { { "owner_name", "idOwner" }, { "device_name", "idDevice" },
-        { "lost_contact", "idContact" }, { "home_wifi", "idHomeWifi" }, { "counted_speakers", "idCountedSpeakers" } };
     private volatile int haFailures;   // failed syncs in a row: backs off
+    /** A grown-up unlock (until, ms) Home Assistant has not been told about yet. */
+    private volatile long unlockPending;
 
-    private static Map<String, Object> sensor(String type, String id, Object state, String icon, Map<String, Object> attrs) {
-        Map<String, Object> m = HaClient.args("type", type, "unique_id", sensorPrefix + id, "state", state, "icon", icon);
-        if (attrs != null) m.put("attributes", attrs);
-        return m;
-    }
-
-    /** Name, device class, unit and so on, sent only when Home Assistant does not know a sensor yet. */
-    private static void describe(Map<String, Object> m) {
-        String id = String.valueOf(m.get("unique_id")).substring(sensorPrefix.length());
-        String[][] d = {
-            { "battery", "Battery", "battery", "%", "measurement", null },
-            { "charging", "Charging", "battery_charging", null, null, null },
-            { "now_playing", "Now playing", null, null, null, null },
-            { "playing", "Playing", null, null, null, null },
-            { "listen_on", "Listen on", null, null, null, null },
-            { "bedtime_used", "Bedtime minutes used", null, "min", "measurement", null },
-            { "bedtime_left", "Bedtime minutes left", null, "min", "measurement", null },
-            { "bedtime_locked", "Bedtime locked", null, null, null, null },
-            { "on_hold", "Buttons on hold", null, null, null, null },
-            { "find_my", "Find My beacon", null, null, null, "diagnostic" },
-            { "wifi", "Wi-Fi network", null, null, null, "diagnostic" },
-            { "gps_fix", "Last GPS fix", "timestamp", null, null, null },
-        };
-        for (String[] x : d) {
-            if (!x[0].equals(id)) continue;
-            m.put("name", x[1]);
-            if (x[2] != null) m.put("device_class", x[2]);
-            if (x[3] != null) m.put("unit_of_measurement", x[3]);
-            if (x[4] != null) m.put("state_class", x[4]);
-            if (x[5] != null) m.put("entity_category", x[5]);
-        }
-    }
-
-    private List<Map<String, Object>> sensorStates(long now) {
-        List<Map<String, Object>> l = new ArrayList<Map<String, Object>>();
+    /** What the iPod reports to its device in Home Assistant (the integration's sensors). */
+    private Map<String, Object> sensorValues(long now) {
+        Map<String, Object> m = new HashMap<String, Object>();
         Book b = current;
         boolean book = b != null && "audiobook".equals(b.kind);
         String title = b == null ? "nothing" : book ? b.name : (nowTitle.length() > 0 ? nowTitle : b.name);
         String who = b == null ? "" : book ? (b.author == null ? "" : b.author) : nowSub;
-        l.add(sensor("sensor", "battery", Integer.valueOf(Math.max(0, batteryLevel)), "mdi:battery", null));
-        l.add(sensor("binary_sensor", "charging", Boolean.valueOf(charging), "mdi:battery-charging", null));
-        l.add(sensor("sensor", "now_playing", title, book ? "mdi:book-open-variant" : "mdi:music",
-            HaClient.args("artist", who, "kind", b == null ? "" : book ? "audiobook" : "music", "playing", Boolean.valueOf(playing))));
-        l.add(sensor("binary_sensor", "playing", Boolean.valueOf(playing), playing ? "mdi:play" : "mdi:pause", null));
-        l.add(sensor("sensor", "listen_on", targetName, "mdi:speaker", null));
-        l.add(sensor("sensor", "bedtime_used", Integer.valueOf(bedtime.used(now)), "mdi:timer-sand", null));
-        l.add(sensor("sensor", "bedtime_left", Integer.valueOf(bedtime.inWindow(now) ? bedtime.remaining(now) : bedtime.capMin), "mdi:timer-sand-complete", null));
-        l.add(sensor("binary_sensor", "bedtime_locked", Boolean.valueOf(bedtime.locked(now)), "mdi:sleep", null));
-        l.add(sensor("binary_sensor", "on_hold", Boolean.valueOf(hold.held(android.os.SystemClock.uptimeMillis())), "mdi:lock", null));
-        l.add(sensor("sensor", "find_my", findMyEnabled() ? beacon.status : "off", "mdi:map-marker-radius", null));
+        m.put("battery", Integer.valueOf(Math.max(0, batteryLevel)));
+        m.put("charging", Boolean.valueOf(charging));
+        m.put("now_playing", title);
+        m.put("now_playing_attributes", HaClient.args("artist", who, "kind", b == null ? "" : book ? "audiobook" : "music"));
+        m.put("playing", Boolean.valueOf(playing));
+        m.put("listen_on", targetName);
+        m.put("bedtime_left", Integer.valueOf(bedtime.inWindow(now) ? bedtime.remaining(now) : bedtime.capMin));
+        m.put("bedtime_locked", Boolean.valueOf(bedtime.locked(now)));
+        m.put("on_hold", Boolean.valueOf(hold.held(android.os.SystemClock.uptimeMillis())));
+        m.put("find_my_beacon", findMyEnabled() ? beacon.status : "off");
         String ssid = sys.connectedSsid();
-        l.add(sensor("sensor", "wifi", ssid == null ? "not connected" : ssid, "mdi:wifi", null));
-        if (clock.fixAtUtc == 0) l.add(sensor("sensor", "gps_fix", null, "mdi:crosshairs-gps", null));   // none yet
-        else {
+        m.put("wifi_network", ssid == null ? "not connected" : ssid);
+        if (clock.fixAtUtc != 0) {
             java.text.SimpleDateFormat iso = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'+00:00'", java.util.Locale.US);
             iso.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-            l.add(sensor("sensor", "gps_fix", iso.format(new java.util.Date(clock.fixAtUtc)), "mdi:crosshairs-gps",
-                HaClient.args("latitude", Double.valueOf(clock.fixLat), "longitude", Double.valueOf(clock.fixLon),
-                    "gps_accuracy", Integer.valueOf(Math.round(clock.fixAccuracy)))));
+            m.put("last_gps_fix", iso.format(new java.util.Date(clock.fixAtUtc)));
         }
-        return l;
+        return m;
     }
 
-    /** Send the sensors' states; any Home Assistant does not know yet are registered (with their names) first. */
-    private void reportSensors(long now) throws IOException {
-        List<Map<String, Object>> st = sensorStates(now);
-        List<String> missing = ha.updateSensors(st);
-        for (Map<String, Object> m : st) {
-            if (!missing.contains(m.get("unique_id"))) continue;
-            describe(m);
-            ha.registerSensor(m);
+    // ---- settings that can be changed in Home Assistant as well as here: newest change wins
+
+    /** Identity settings (Identity store keys). */
+    private static final String[][] IDENTITY = { { "owner_name", "idOwner" }, { "device_name", "idDevice" },
+        { "lost_contact", "idContact" }, { "home_wifi", "idHomeWifi" }, { "counted_speakers", "idCountedSpeakers" } };
+    private static final String[] SETTINGS = { "volume_limit", "hold_after", "unlock_speed", "wheel_click", "click_loudness",
+        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline" };
+    private volatile boolean applyingHa;
+
+    /** A setting changed here on the iPod (not one arriving from Home Assistant): it is now the newest. */
+    private void touched(String key) {
+        if (applyingHa) return;
+        synchronized (store) { store.section("settingTs").put(key, Long.valueOf(clock.now())); }
+        store.save();
+        haAt = 0;                          // tell Home Assistant soon
+    }
+
+    private long settingTs(String key) {
+        synchronized (store) {
+            Object v = store.section("settingTs").get(key);
+            return v instanceof Number ? ((Number) v).longValue() : 0;
         }
-        sensorSig = sensorSignature(now);
+    }
+
+    private Object settingValue(String k) {
+        if (k.equals("volume_limit")) return Integer.valueOf(volumeLimit());
+        if (k.equals("hold_after")) return String.valueOf(holdIdleS());
+        if (k.equals("unlock_speed")) return String.valueOf(holdWindowMs());
+        if (k.equals("wheel_click")) return String.valueOf(clickMode() & 3);
+        if (k.equals("click_loudness")) return String.valueOf(clickLevel());
+        if (k.equals("wheel_reversed")) return Boolean.valueOf(wheelReversed());
+        if (k.equals("find_my")) return Boolean.valueOf(findMyEnabled());
+        if (k.equals("speaker_always_on")) return Boolean.valueOf(speakerAlways());
+        if (k.equals("keep_offline")) return Boolean.valueOf(keepAll());
+        for (String[] i : IDENTITY) if (i[0].equals(k)) return id.raw(i[1]);
+        return null;
+    }
+
+    /** Every setting with when it last changed here (0: never, so Home Assistant's value wins, or it adopts ours). */
+    private Map<String, Object> settingsReport() {
+        Map<String, Object> m = new HashMap<String, Object>();
+        for (String k : SETTINGS) m.put(k, java.util.Arrays.asList(settingValue(k), Long.valueOf(settingTs(k))));
+        for (String[] i : IDENTITY) m.put(i[0], java.util.Arrays.asList(settingValue(i[0]), Long.valueOf(settingTs(i[0]))));
+        return m;
+    }
+
+    private static boolean boolOf(Object o) { return Boolean.TRUE.equals(o) || "true".equals(String.valueOf(o)) || "1".equals(String.valueOf(o)); }
+
+    /** Settings from Home Assistant: each one changed there after it last changed here is applied. */
+    private void applySettings(Object o) {
+        if (!(o instanceof Map)) return;
+        Map<String, Object> m = Json.map(o);
+        applyingHa = true;
+        try {
+            for (Map.Entry<String, Object> e : m.entrySet()) {
+                if (!(e.getValue() instanceof List) || ((List<?>) e.getValue()).size() != 2) continue;
+                String k = e.getKey();
+                Object v = ((List<?>) e.getValue()).get(0), tsO = ((List<?>) e.getValue()).get(1);
+                long ts = tsO instanceof Number ? ((Number) tsO).longValue() : 0;
+                if (ts == 0 || ts <= settingTs(k)) continue;
+                Object cur = settingValue(k);
+                if (cur == null) continue;      // not a setting this version knows
+                boolean same = String.valueOf(cur).equals(String.valueOf(v))
+                    || (cur instanceof Boolean && ((Boolean) cur).booleanValue() == boolOf(v));
+                if (!same) {
+                    log("settings: " + k + " set in Home Assistant");
+                    applySetting(k, v);
+                }
+                synchronized (store) { store.section("settingTs").put(k, Long.valueOf(ts)); }
+            }
+            store.save();
+        } finally {
+            applyingHa = false;
+        }
+    }
+
+    private void applySetting(String k, Object v) {
+        if (k.equals("volume_limit")) setVolumeLimit(Math.max(10, Math.min(100, intOf(v, 100))));
+        else if (k.equals("hold_after")) setHoldIdleS(Math.max(0, intOf(v, 60)));
+        else if (k.equals("unlock_speed")) setHoldWindowMs(Math.max(250, intOf(v, 1000)));
+        else if (k.equals("wheel_click")) setClickMode(intOf(v, 3) & 3);
+        else if (k.equals("click_loudness")) setClickLevel(Math.max(0, Math.min(2, intOf(v, 0))));
+        else if (k.equals("wheel_reversed")) setWheelReversed(boolOf(v));
+        else if (k.equals("find_my")) setFindMyEnabled(boolOf(v));
+        else if (k.equals("speaker_always_on")) setSpeakerAlways(boolOf(v));
+        else if (k.equals("keep_offline")) setKeepAll(boolOf(v));
+        else for (String[] i : IDENTITY) {
+            if (!i[0].equals(k)) continue;
+            if (id.update(i[1], v) && k.equals("device_name") && targetId.length() == 0) targetName = id.device();
+        }
     }
 
     private long fixSent;            // utc of the GPS fix last sent
@@ -2297,31 +2328,38 @@ public final class Engine {
         return false;
     }
 
+    private long pendingFix;         // what locationReport() offered, committed by locationSent()
+    private String pendingZone;
+
     /**
      * The device tracker: a new GPS fix goes up as coordinates (even hours later, once there is Wi-Fi again: it is the
      * last place it was seen); otherwise home Wi-Fi means "home" and other Wi-Fi (a phone's hotspot) "not_home".
+     * Null when nothing changed.
      */
-    public void reportLocation() throws IOException {
-        Integer batt = Integer.valueOf(Math.max(0, batteryLevel));
+    private Map<String, Object> locationReport() {
         if (fixSent == 0) fixSent = store.num("fixSent", 0);
+        pendingFix = 0;
+        pendingZone = null;
         boolean home = onHomeWifi();
         if (home) ha.preferHome();
         // a fix older than the iPod coming home (or than 6 hours) is not where it is now: never send it later as current
         if (home && clock.fixAtUtc != fixSent) { fixSent = clock.fixAtUtc; store.put("fixSent", Long.valueOf(fixSent)); }
         boolean fresh = clock.now() - clock.fixAtUtc < 6 * 3600000L;
         if (clock.fixAtUtc != 0 && clock.fixAtUtc != fixSent && !home && fresh) {
-            ha.location(HaClient.args("gps", java.util.Arrays.asList(Double.valueOf(clock.fixLat), Double.valueOf(clock.fixLon)),
-                "gps_accuracy", Integer.valueOf(Math.max(1, Math.round(clock.fixAccuracy))), "battery", batt));
-            fixSent = clock.fixAtUtc;
-            store.put("fixSent", Long.valueOf(fixSent));
-            zoneSent = "";
-            return;
+            pendingFix = clock.fixAtUtc;
+            return HaClient.args("gps", java.util.Arrays.asList(Double.valueOf(clock.fixLat), Double.valueOf(clock.fixLon)),
+                "accuracy", Integer.valueOf(Math.max(1, Math.round(clock.fixAccuracy))));
         }
         String zone = home ? "home" : "not_home";
-        if (zone.equals(zoneSent)) return;
-        if (zone.equals("not_home") && fixSent == clock.fixAtUtc && clock.fixAtUtc != 0 && zoneSent.length() == 0) return;   // keep showing the last fix
-        ha.location(HaClient.args("location_name", zone, "battery", batt));
-        zoneSent = zone;
+        if (zone.equals(zoneSent)) return null;
+        if (zone.equals("not_home") && fixSent == clock.fixAtUtc && clock.fixAtUtc != 0 && zoneSent.length() == 0) return null;   // keep showing the last fix
+        pendingZone = zone;
+        return HaClient.args("zone", zone);
+    }
+
+    private void locationSent() {
+        if (pendingFix != 0) { fixSent = pendingFix; store.put("fixSent", Long.valueOf(fixSent)); zoneSent = ""; }
+        if (pendingZone != null) zoneSent = pendingZone;
     }
 
     /** What changes often enough to report straight away (play, pause, track, hold, bedtime lock). */
@@ -2366,12 +2404,8 @@ public final class Engine {
         }
         saveBedtime();
         log("bedtime: unlocked with the grown-up code until " + new java.text.SimpleDateFormat("HH:mm", java.util.Locale.UK).format(new java.util.Date(bedtime.unlockUntil)));
-        pool.execute(new Runnable() { public void run() {
-            try {
-                ha.event(ha.eventName("unlocked"), HaClient.args("until",
-                    new java.text.SimpleDateFormat("HH:mm", java.util.Locale.UK).format(new java.util.Date(bedtime.unlockUntil))));
-            } catch (IOException ignored) { }
-        } });
+        unlockPending = bedtime.unlockUntil;   // goes with the next sync (straight away on Wi-Fi)
+        haAt = 0;
         return true;
     }
 
