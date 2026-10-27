@@ -15,7 +15,8 @@ title: Settings
 
 ## On screen
 
-- {{shot:settings}}
+- ![Scroll down for Listen on, Settings, Status and Help.](../screenshots/02-menu-more.png) <!-- shot:menu-more -->
+- ![Speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction.](../screenshots/33-ha-device-config-more.png) <!-- shot:ha-device-config-more -->
 - {{shot:wifi}}
 
 ## For grown-ups

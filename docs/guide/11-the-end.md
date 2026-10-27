@@ -15,7 +15,7 @@ title: That is everything
 
 ## On screen
 
-- {{shot:main-menu}}
+- ![Continue where you stopped, your audiobooks, your music, speakers, settings, help.](../screenshots/01-menu.png) <!-- shot:menu -->
 
 ## For grown-ups
 

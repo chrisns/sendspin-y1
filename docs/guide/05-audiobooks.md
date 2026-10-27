@@ -15,7 +15,7 @@ title: Audiobooks
 
 ## On screen
 
-- {{shot:audiobooks}}
+- ![Your audiobooks, grouped by author.](../screenshots/06-authors.png) <!-- shot:authors -->
 - ![Play it, remove the download, jump to a chapter, or choose where it plays.](../screenshots/08-book-page.png) <!-- shot:book-page -->
 
 ## For grown-ups

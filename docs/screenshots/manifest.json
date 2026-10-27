@@ -1,0 +1,68 @@
+[
+ {
+  "file": "01-menu.png",
+  "name": "menu",
+  "title": "The main menu",
+  "caption": "Continue where you stopped, your audiobooks, your music, speakers, settings, help."
+ },
+ {
+  "file": "02-menu-more.png",
+  "name": "menu-more",
+  "title": "The rest of the menu",
+  "caption": "Scroll down for Listen on, Settings, Status and Help."
+ },
+ {
+  "file": "03-now-playing.png",
+  "name": "now-playing",
+  "title": "Now playing",
+  "caption": "The cover, the title, who is singing, and where it is playing. Turn the wheel for volume."
+ },
+ {
+  "file": "04-in-progress.png",
+  "name": "in-progress",
+  "title": "In progress",
+  "caption": "Books you have started, with how far through each one you are."
+ },
+ {
+  "file": "05-book-now-playing.png",
+  "name": "book-now-playing",
+  "title": "An audiobook",
+  "caption": "An audiobook shows its chapter. Press play, and it carries on from where you stopped."
+ },
+ {
+  "file": "06-authors.png",
+  "name": "authors",
+  "title": "Audiobooks by author",
+  "caption": "Your audiobooks, grouped by author."
+ },
+ {
+  "file": "07-books.png",
+  "name": "books",
+  "title": "One author's books",
+  "caption": "Each book shows its length and whether it is saved on the iPod to play offline."
+ },
+ {
+  "file": "30-bedtime-lock.png",
+  "name": "bedtime-lock",
+  "title": "Bedtime",
+  "caption": "When tonight's listening is used up, it says goodnight. Only a grown-up's code (or Wi-Fi settings) works."
+ },
+ {
+  "file": "31-ha-device-top.png",
+  "name": "ha-device-top",
+  "title": "The player in Home Assistant",
+  "caption": "Its own device page: battery, whether bedtime is locked, minutes left, what it is playing and where, and a Find it button."
+ },
+ {
+  "file": "32-ha-device-config.png",
+  "name": "ha-device-config",
+  "title": "Every setting, in Home Assistant",
+  "caption": "Bedtime window and allowance, click sound, names, Find My, hold time, the 'if found' contact and more. Change one and the player has it within a minute."
+ },
+ {
+  "file": "33-ha-device-config-more.png",
+  "name": "ha-device-config-more",
+  "title": "More settings",
+  "caption": "Speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction."
+ }
+]

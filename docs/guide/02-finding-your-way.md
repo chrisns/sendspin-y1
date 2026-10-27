@@ -17,7 +17,7 @@ title: Finding your way around
 
 ## On screen
 
-- {{shot:main-menu}}
+- ![Continue where you stopped, your audiobooks, your music, speakers, settings, help.](../screenshots/01-menu.png) <!-- shot:menu -->
 - {{shot:lock-hold}}
 
 ## For grown-ups

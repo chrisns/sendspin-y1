@@ -15,8 +15,9 @@ title: Bedtime
 
 ## On screen
 
-- {{shot:bedtime-lock}}
-- {{shot:settings}}
+- ![When tonight's listening is used up, it says goodnight. Only a grown-up's code (or Wi-Fi settings) works.](../screenshots/30-bedtime-lock.png) <!-- shot:bedtime-lock -->
+- ![Bedtime window and allowance, click sound, names, Find My, hold time, the 'if found' contact and more. Change one and the player has it within a minute.](../screenshots/32-ha-device-config.png) <!-- shot:ha-device-config -->
+- ![Scroll down for Listen on, Settings, Status and Help.](../screenshots/02-menu-more.png) <!-- shot:menu-more -->
 
 ## For grown-ups
 

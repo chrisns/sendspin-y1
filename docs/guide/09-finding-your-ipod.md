@@ -15,7 +15,7 @@ title: Finding your iPod
 
 ## On screen
 
-- {{shot:lock-hold}}
+- ![Its own device page: battery, whether bedtime is locked, minutes left, what it is playing and where, and a Find it button.](../screenshots/31-ha-device-top.png) <!-- shot:ha-device-top -->
 
 ## For grown-ups
 

@@ -14,7 +14,7 @@ on-screen shot list (screenshots), and plain documentation for grown-ups. One so
    screen or setting needs a sentence in the matching chapter's *For grown-ups* and, if the child will meet it, a line of
    *Narration*. Narration is for an 8 year old: short sentences, second person, British, no jargon, no em-dashes. Keep each
    chapter under about 40 seconds (about 100 words). Add a chapter by adding `NN-slug.md` with the same front matter.
-2. **Re-take the screenshots**: `python3 docs/screenshots/capture.py` (device on USB, adb, root; see its header).
+2. **Re-take the screenshots**: `python3 docs/screenshots/capture.py` (device on USB, outside the bedtime window: it refuses within 20 minutes of it, adb, root; see its header).
    It drives the app through the debug key hook, restores the device's state, and blurs phone numbers, email addresses and
    Wi-Fi names. Never keep unblurred PNGs under `docs/screenshots/`. Look at every image after a run.
    The Home Assistant device page is captured through Claude in Chrome (a new tab on the user's Home Assistant, signed in
