@@ -24,7 +24,16 @@ LOCAL = CFG["ha_url"].rstrip("/")      # tried first; the integration's Nabu Cas
 DEVICE_NAME = CFG.get("name") or "Y1"
 TITLE = CFG.get("otp_title", DEVICE_NAME + " grown-up code")
 APP = "me.cns.sendspin.android"
-ADB = os.environ.get("ADB") or os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
+def _find_adb():
+    import shutil
+    sdk = [os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"), os.path.expanduser("~/Library/Android/sdk"),
+           os.path.expanduser("~/Android/Sdk"), os.path.join(os.environ.get("LOCALAPPDATA", ""), "Android", "Sdk")]
+    for c in [shutil.which("adb")] + [d and os.path.join(d, "platform-tools", "adb") for d in sdk]:
+        if c and os.path.exists(c): return c
+    return "adb"
+
+
+ADB = os.environ.get("ADB") or _find_adb()
 DEV = ["-e"] if os.environ.get("EMULATOR") else ["-d"]   # EMULATOR=1 to try it on the emulator
 LINKS = ("bedtime_start", "bedtime_end", "bedtime_cap", "bedtime_used")
 
@@ -109,7 +118,12 @@ def push(pub, token):
     # no stat/awk on Android 4.2: read the app's uid from dumpsys here, then copy and hand the file to the app
     uid = re.search(r"userId=(\d+)", adb("shell", "dumpsys package " + APP)).group(1)
     f = "/data/data/%s/files/ha.json" % APP
-    adb_su("cp %s %s && chown %s:%s %s && chmod 600 %s; rm -f %s; restorecon %s 2>/dev/null; true" % (tmp, f, uid, uid, f, f, tmp, f))
+    # the staged copy is 0644 after adb push: make it private first, and report failure if the final file is not the app's
+    adb_su("chmod 600 %s; cp %s %s && chown %s:%s %s && chmod 600 %s; rm -f %s; restorecon %s 2>/dev/null; true" % (tmp, tmp, f, uid, uid, f, f, tmp, f))
+    try: listing = " ".join(adb_su("ls -ln %s" % f).split())
+    except subprocess.CalledProcessError: listing = ""
+    if "%s %s" % (uid, uid) not in listing or not listing.startswith("-rw-------"):
+        sys.exit("the copy to %s failed (is the Y1 rooted, and is the app installed?): nothing was paired on the player" % f)
     print("pushed: the player syncs within a minute", "(cloudhook too)" if dev.get("cloudhook_url") else "(home network only)")
 
 
@@ -124,9 +138,12 @@ def main():
         print("made", f)
     elif cmd == "op":
         vault = sys.argv[2]
-        subprocess.run(["op", "item", "create", "--category", "password", "--title", TITLE, "--vault", vault,
-                        "one-time password[otp]=" + otpauth(read("totp")),
-                        "notesPlain=Unlocks %s for 8 hours during bedtime. Each code works once; type it with the wheel on the bedtime screen." % DEVICE_NAME],
+        # the secret goes in on stdin as a template: on the command line any local process could read it from the process list
+        tpl = {"title": TITLE, "category": "PASSWORD", "fields": [
+            {"id": "onetimepassword", "type": "OTP", "label": "one-time password", "value": otpauth(read("totp"))},
+            {"id": "notesPlain", "type": "STRING", "purpose": "NOTES",
+             "value": "Unlocks %s for 8 hours during bedtime. Each code works once; type it with the wheel on the bedtime screen." % DEVICE_NAME}]}
+        subprocess.run(["op", "item", "create", "--vault", vault, "--template", "-"], input=json.dumps(tpl), text=True,
                        check=True, stdout=subprocess.DEVNULL)
         print("created", repr(TITLE), "in", vault)
     elif cmd == "check":

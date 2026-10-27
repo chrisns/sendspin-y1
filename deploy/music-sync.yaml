@@ -1,4 +1,5 @@
-# Keeps /var/lib/music-sync in step with the FREYAS playlist: 192 kbps stereo MP3s + covers + manifest.json,
+# Keeps /var/lib/music-sync in step with the child's Apple Music library (LIBRARY_PROVIDER) or, if that is unset, with the
+# playlist named PLAYLIST: 192 kbps stereo MP3s + covers + manifest.json,
 # recorded from Music Assistant (the only thing that can decrypt Apple Music). The file server publishes it.
 # Runs in the Music Assistant image (python, cryptography, ffmpeg+libmp3lame). Needs: secret music-sync-token
 # (key "token", a Music Assistant API token) and configmap music-sync (created from deploy/music-sync/*.py).

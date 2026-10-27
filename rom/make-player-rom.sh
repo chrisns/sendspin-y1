@@ -11,10 +11,13 @@ cd "$(dirname "$0")"
 [ -d "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools" ] && export PATH="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools:$PATH"
 adb wait-for-device
 # 1. Solar's missing native libraries (copied out of its own APK)
-TMP=$(mktemp -d); adb pull /system/app/com.solar.launcher.apk "$TMP/s.apk" >/dev/null
-( cd "$TMP" && unzip -q -o s.apk 'lib/armeabi-v7a/libwolfssl.so' 'lib/armeabi-v7a/libc++_shared.so' )
-for f in libwolfssl.so libc++_shared.so; do adb push "$TMP/lib/armeabi-v7a/$f" /data/local/tmp/ >/dev/null; done
-adb shell "su -c 'mount -o remount,rw /system; cp /data/local/tmp/libwolfssl.so /data/local/tmp/libc++_shared.so /system/lib/; chmod 644 /system/lib/libwolfssl.so /system/lib/libc++_shared.so'"
+#    (skipped on a Y1 that was provisioned before: slim.sh removed the APK they come from, and they are already in /system/lib)
+if adb shell "ls /system/lib/libwolfssl.so /system/lib/libc++_shared.so" | grep -q "No such file"; then
+  TMP=$(mktemp -d); adb pull /system/app/com.solar.launcher.apk "$TMP/s.apk" >/dev/null
+  ( cd "$TMP" && unzip -q -o s.apk 'lib/armeabi-v7a/libwolfssl.so' 'lib/armeabi-v7a/libc++_shared.so' )
+  for f in libwolfssl.so libc++_shared.so; do adb push "$TMP/lib/armeabi-v7a/$f" /data/local/tmp/ >/dev/null; done
+  adb shell "su -c 'mount -o remount,rw /system; cp /data/local/tmp/libwolfssl.so /data/local/tmp/libc++_shared.so /system/lib/; chmod 644 /system/lib/libwolfssl.so /system/lib/libc++_shared.so'"
+fi
 # 2. the player first (so there is a home screen), then strip Solar
 ../deploy/deploy_y1.sh
 adb push overlay/99PlayerInit.sh /data/local/tmp/ >/dev/null

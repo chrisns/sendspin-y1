@@ -20,6 +20,8 @@ async def async_setup_entry(hass, entry, add):
 
 
 class Flag(Y1Entity, BinarySensorEntity):
+    _live = True
+
     def __init__(self, dev, key, name, dclass, icon):
         super().__init__(dev, key, name)
         self.key, self._attr_device_class, self._attr_icon = key, dclass, icon

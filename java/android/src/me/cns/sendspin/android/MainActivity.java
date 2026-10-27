@@ -54,6 +54,9 @@ public final class MainActivity extends Activity {
     protected void onNewIntent(Intent i) { super.onNewIntent(i); provision(i); }
 
     @Override
+    protected void onPause() { ui.cancelVoice(); super.onPause(); }
+
+    @Override
     protected void onDestroy() {
         alive = false;
         super.onDestroy();

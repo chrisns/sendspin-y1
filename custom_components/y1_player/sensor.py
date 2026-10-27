@@ -27,6 +27,8 @@ async def async_setup_entry(hass, entry, add):
 
 
 class Reported(Y1Entity, SensorEntity):
+    _live = True
+
     def __init__(self, dev, key, name, icon, dclass, unit, sclass):
         super().__init__(dev, key, name)
         self.key = key

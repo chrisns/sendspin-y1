@@ -2146,19 +2146,35 @@ public final class Engine {
             rep.put("settings", settingsReport());
             final Map<String, Object> loc = locationReport();
             if (loc != null) rep.put("location", loc);
-            int n = 0;
+            int n = (int) store.num("playedN", 0);
             long seq = store.num("playedSeq", 1);
             // the integration adds our minutes to the shared counter itself, so minutes counted there at the same
-            // moment (her Sonos) are never overwritten; seq stays the same until it has answered, so a resend after a
-            // lost reply is recognised and not counted twice
-            if (bedtime.localUnsent > 0 && bedtime.inWindow(now)) {
-                n = Math.min(bedtime.localUnsent, 60);
-                rep.put("played", HaClient.args("minutes", Integer.valueOf(n), "seq", Long.valueOf(seq)));
+            // moment (her Sonos) are never overwritten. The batch {seq, n} is frozen (kept in the store) and resent
+            // unchanged until the integration confirms it, so a resend after a lost reply is recognised and not
+            // counted twice, and a batch it dropped is never mistaken for counted
+            if (n > 0 && bedtime.localUnsent == 0) {      // the night rolled over since it was frozen: those minutes belong to last night
+                n = 0;
+                store.put("playedN", Long.valueOf(0));
+                store.put("playedSeq", Long.valueOf(++seq));   // it may have been counted: a higher seq is accepted either way
             }
+            if (n == 0 && bedtime.localUnsent > 0 && bedtime.inWindow(now)) {
+                n = Math.min(bedtime.localUnsent, 60);
+                store.put("playedN", Long.valueOf(n));
+            }
+            if (n > 0) rep.put("played", HaClient.args("minutes", Integer.valueOf(n), "seq", Long.valueOf(seq)));
             long unl = unlockPending;
             if (unl > 0) rep.put("unlocked_until", Long.valueOf(unl));
             Map<String, Object> r = ha.sync(rep);
-            if (n > 0) store.put("playedSeq", Long.valueOf(seq + 1));
+            boolean counted = n > 0;
+            if (n > 0 && r.get("played_seq") instanceof Number) {
+                long hs = ((Number) r.get("played_seq")).longValue();    // where the integration's own seq has got to
+                if (hs > seq) {                                          // ours was behind (data cleared): it dropped this batch
+                    counted = false;
+                    store.put("playedSeq", Long.valueOf(hs + 1));
+                    log("played: seq was behind (" + seq + " against " + hs + "), resending");
+                }
+            }
+            if (counted) { store.put("playedSeq", Long.valueOf(seq + 1)); store.put("playedN", Long.valueOf(0)); }
             if (unl > 0 && unlockPending == unl) unlockPending = 0;
             if (loc != null) locationSent();
             applySettings(r.get("settings"));
@@ -2177,7 +2193,7 @@ public final class Engine {
             Object nightObj = b.get("night");
             String night = nightObj == null ? null : String.valueOf(nightObj).trim();
             if (night != null && !night.matches("\\d{4}-\\d{2}-\\d{2}|none")) night = null;
-            if (n > 0) bedtime.sent(n, used);     // its counter already includes them
+            if (counted) bedtime.sent(n, used);     // its counter already includes them
             bedtime.applyServer(ws, we, cap, used, now, night);
             saveBedtime();
             sensorSig = sensorSignature(now);
@@ -2234,10 +2250,14 @@ public final class Engine {
     /** Armed for gifting: the first unlock (three taps) plays the Help video at full volume, then it disarms itself. */
     public boolean giftArmed() { return store.num("giftArmed", 0) == 1; }
 
-    public void setGiftArmed(boolean on) {
+    public void setGiftArmed(boolean on) { setGiftArmed(on, true); }
+
+    /** lock false: armed but still usable, so the iPod's own row can cancel it (the next hold unlock plays the video). */
+    public void setGiftArmed(boolean on, boolean lock) {
+        if (on && !Help.available()) { touched("gift_armed"); return; }   // nothing to play: stays unarmed, and says so
         store.put("giftArmed", Long.valueOf(on ? 1 : 0));
         touched("gift_armed");
-        if (on) hold.engage();                              // locked, so the next three taps are the unlock
+        if (on && lock) hold.engage();                      // locked, so the next three taps are the unlock
     }
 
     /** Voice search never leaves the iPod (slower; needs the local model). */
@@ -2298,7 +2318,7 @@ public final class Engine {
                 String k = e.getKey();
                 Object v = ((List<?>) e.getValue()).get(0), tsO = ((List<?>) e.getValue()).get(1);
                 long ts = tsO instanceof Number ? ((Number) tsO).longValue() : 0;
-                if (ts == 0 || ts <= settingTs(k)) continue;
+                if (ts == 0 || ts <= settingTs(k) || ts > clock.now() + 600000L) continue;   // nothing, old, or stamped in the future
                 Object cur = settingValue(k);
                 if (cur == null) continue;      // not a setting this version knows
                 boolean same = String.valueOf(cur).equals(String.valueOf(v))
@@ -2317,8 +2337,8 @@ public final class Engine {
 
     private void applySetting(String k, Object v) {
         if (k.equals("volume_limit")) setVolumeLimit(Math.max(10, Math.min(100, intOf(v, 100))));
-        else if (k.equals("hold_after")) setHoldIdleS(Math.max(0, intOf(v, 60)));
-        else if (k.equals("unlock_speed")) setHoldWindowMs(Math.max(250, intOf(v, 1000)));
+        else if (k.equals("hold_after")) setHoldIdleS(Math.max(0, Math.min(3600, intOf(v, 60))));
+        else if (k.equals("unlock_speed")) setHoldWindowMs(Math.max(250, Math.min(5000, intOf(v, 1000))));
         else if (k.equals("wheel_click")) setClickMode(intOf(v, 3) & 3);
         else if (k.equals("click_loudness")) setClickLevel(Math.max(0, Math.min(2, intOf(v, 0))));
         else if (k.equals("wheel_reversed")) setWheelReversed(boolOf(v));
@@ -2793,6 +2813,13 @@ public final class Engine {
         byte[] pcm = voice.stop();
         if (voicePaused) { voicePaused = false; resume(); }
         return pcm;
+    }
+
+    /** Abandon a search: the microphone is released and paused playback resumes, whatever state it was in. */
+    public void cancelListening() {
+        try { stopListening(); } catch (RuntimeException e) { log("voice: cancel failed: " + e); }
+        voicePaused = false;
+        Voice.cancelLocal();
     }
 
     /** Speech to text (blocking): on the iPod if a local model is installed, else Home Assistant's speech-to-text. */

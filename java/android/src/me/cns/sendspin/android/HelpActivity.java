@@ -31,7 +31,9 @@ public final class HelpActivity extends Activity {
     private final Handler handler = new Handler();
     private AudioManager audio;
     private int volumeBefore = -1, shown = -1;
-    private long labelUntil;
+    private long labelUntil, pausedAt;
+    private boolean pausedMusic, cleaned;
+    private static final long PAUSED_MAX_MS = 120000;       // a paused video nobody is watching does not hold the screen on
 
     @Override
     protected void onCreate(Bundle b) {
@@ -42,13 +44,9 @@ public final class HelpActivity extends Activity {
         getWindow().setFlags(f, f);
         open = true;
         Engine eng = Engine.get(this);
-        if (eng.playing) eng.pause();                       // her music waits while the video explains things
+        if (eng.playing) { eng.pause(); pausedMusic = true; }   // her music waits while the video explains things
         chapters = Help.chapters();
         audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        if (getIntent().getBooleanExtra("loud", false)) {
-            volumeBefore = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
-            audio.setStreamVolume(AudioManager.STREAM_MUSIC, audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
-        }
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
         video = new VideoView(this);
@@ -63,7 +61,18 @@ public final class HelpActivity extends Activity {
         setContentView(root);
         final int start = Math.max(0, Math.min(chapters.size() - 1, getIntent().getIntExtra("chapter", 0)));
         video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            public void onPrepared(MediaPlayer mp) { video.seekTo((int) (chapters.get(start).start * 1000)); video.start(); }
+            public void onPrepared(MediaPlayer mp) {
+                if (getIntent().getBooleanExtra("loud", false)) {
+                    Engine eng = Engine.get(HelpActivity.this);
+                    eng.setGiftArmed(false);                    // the gift moment is spent only now the video really plays
+                    // deliberate full volume, but not through headphones or a bedtime lock, where the limit stands
+                    if (!eng.bedtimeLocked() && !audio.isWiredHeadsetOn() && !audio.isBluetoothA2dpOn() && volumeBefore < 0) {
+                        volumeBefore = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+                        audio.setStreamVolume(AudioManager.STREAM_MUSIC, audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
+                    }
+                }
+                video.seekTo((int) (chapters.get(start).start * 1000)); video.start();
+            }
         });
         video.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             public void onCompletion(MediaPlayer mp) { Engine.get(HelpActivity.this).log("help: video completed at " + mp.getCurrentPosition() + " ms"); finish(); }
@@ -84,6 +93,9 @@ public final class HelpActivity extends Activity {
     private final Runnable poll = new Runnable() {
         public void run() {
             Engine.get(HelpActivity.this).hold.activity(SystemClock.uptimeMillis());   // watching is not idle
+            if (video.isPlaying()) pausedAt = 0;
+            else if (pausedAt == 0) pausedAt = SystemClock.uptimeMillis();
+            else if (SystemClock.uptimeMillis() - pausedAt > PAUSED_MAX_MS && video.getCurrentPosition() > 0) { finish(); return; }
             if (video.isPlaying() || video.getCurrentPosition() > 0) {
                 int c = chapterAt(video.getCurrentPosition());
                 if (c != shown) { shown = c; label.setText(chapters.get(c).title); labelUntil = SystemClock.uptimeMillis() + 3500; }
@@ -125,14 +137,26 @@ public final class HelpActivity extends Activity {
     @Override
     protected void onPause() {
         Engine.get(this).log("help: paused, finishing=" + isFinishing() + " at " + video.getCurrentPosition() + " ms");
+        cleanup();                                          // asleep or covered: the limit and the idle clock apply again
+        if (!isFinishing()) finish();
         super.onPause();
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onStop() { cleanup(); super.onStop(); }
+
+    @Override
+    protected void onDestroy() { cleanup(); super.onDestroy(); }
+
+    private void cleanup() {
         open = false;
         handler.removeCallbacks(poll);
-        if (volumeBefore >= 0) audio.setStreamVolume(AudioManager.STREAM_MUSIC, volumeBefore, 0);
-        super.onDestroy();
+        if (volumeBefore >= 0) { audio.setStreamVolume(AudioManager.STREAM_MUSIC, volumeBefore, 0); volumeBefore = -1; }
+        if (!cleaned) {
+            cleaned = true;
+            if (pausedMusic && !started()) Engine.get(this).resume();   // the video never played: her book carries on
+        }
     }
+
+    private boolean started() { try { return shown >= 0 || video.getCurrentPosition() > 0; } catch (RuntimeException e) { return false; } }
 }

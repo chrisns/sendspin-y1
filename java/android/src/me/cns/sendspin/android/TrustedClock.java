@@ -123,6 +123,12 @@ public final class TrustedClock {
         return false;
     }
 
+    /** The time in an authenticated reply from Home Assistant: like NTP's fallback, and never a jump of more than a day. */
+    public void fromSealed(long ms) {
+        if (fixAgeMs() < 6 * 3600000L || (fixed() && Math.abs(now() - ms) > 86400000L)) return;
+        fix(ms, "Home Assistant");
+    }
+
     /** A Date header (1 s resolution): only used when NTP has not answered for a while. */
     public void fromHttpDate(String date) {
         if (date == null || fixAgeMs() < 6 * 3600000L) return;

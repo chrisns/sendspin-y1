@@ -40,7 +40,8 @@ Home Assistant.
   sealed, replay-proof messages, so it can report and read its settings and nothing else, at home or through Nabu
   Casa.
 - **Find My beacon:** an OpenHaystack-style Bluetooth beacon that keeps running alongside Wi-Fi and Bluetooth audio, via
-  a small driver shim (no LE advertising-parameters command, which crashes this chip's firmware).
+  a small driver shim (no LE advertising-parameters command, which crashes this chip's firmware). The shim is
+  optional (`--shim` when provisioning) and the Y1 reboots to load it.
 
 ## How it fits together
 
@@ -73,7 +74,7 @@ flowchart LR
 | `deploy/audiobook-files.yaml` | the file server for audiobooks and recordings |
 | `custom_components/y1_player/` | the Home Assistant integration (install with HACS as a custom repository, or copy it) |
 | `deploy/y1_setup.py` | pairs a player with the integration and makes its grown-up code |
-| `deploy/device.example.json` | the private config it reads (copy to `deploy/secrets/bedtime/device.json`) |
+| `deploy/device.example.json` | the private config it reads (copy to `deploy/secrets/bedtime/device.json`, or point `DEVICE_CONFIG` at it; `notify` there is the name of a Home Assistant notify service) |
 | `deploy/music-assistant-patch/` | the Music Assistant patch, with how to mount it |
 | `rom/` | scripts that slim the Solar ROM down to this app, the Bluetooth shim installer, time zone data, Find My keys |
 | `docs/NOTES.md` | how it was built and the traps found on the way (start here before changing anything low level) |
@@ -84,12 +85,14 @@ user's accounts) is a `sitecustomize.py` mounted into the stock image; see `depl
 ## Setting one up
 
 You need: a Y1 (Type A, Android 4.2) flashed with the Solar ROM and rooted, a Music Assistant server with the child's
-Apple Music added as its own provider, a Home Assistant instance, and Android build tools (SDK build-tools 34, the
-android-17 platform, JDK, and [zig](https://ziglang.org/) for the native helpers).
+Apple Music added as its own provider, a Home Assistant instance, and Android build tools (SDK build-tools 34.0.0, the
+android-17 platform, JDK 17, and [zig](https://ziglang.org/) for the native helpers).
 
-The quick way: `python3 provision/y1.py doctor | fetch | flash | provision` (or `all`), which downloads the Solar ROM and
-the flashing tool from their own projects, flashes, builds (or uses a release bundle's prebuilt app) and sets the Y1 up;
-see [docs/PROVISIONING.md](docs/PROVISIONING.md) for what is fetched rather than shipped, and why. By hand:
+The quick way: `python3 provision/y1.py doctor | fetch | flash | build | provision` (or `all`), which downloads the Solar
+ROM and the flashing tool from their own projects, flashes, builds (or uses a release bundle's prebuilt app) and sets
+the Y1 up. `provision` takes `--shim` (Bluetooth shim), `--voice` (on-device speech to text) and `--prebuilt DIR` (a
+release bundle's app and helpers); [docs/PROVISIONING.md](docs/PROVISIONING.md) has the detail, what is fetched rather
+than shipped, and why. By hand:
 
 1. **ROM:** with the Y1 on USB, `rom/make-player-rom.sh` removes Solar's launcher and helpers and installs the boot
    script; `rom/bt/install_shim.sh` installs the Bluetooth shim (optional, for the beacon with headphones).
@@ -98,12 +101,19 @@ see [docs/PROVISIONING.md](docs/PROVISIONING.md) for what is fetched rather than
 3. **music-sync and the file server:** fill in `deploy/music-sync.yaml` (the child's provider instance, names) and
    `deploy/audiobook-files.yaml`, create the `music-sync-token` secret (admin token, plus the child's token as
    `play_token`), then `kubectl apply` them.
-4. **The app:** `MA_HOST=<server> deploy/deploy_y1.sh` builds, installs and points the app at Music Assistant.
+4. **The app:** first create `deploy/secrets/ma_token` (the child's Music Assistant token from step 2) and
+   `deploy/secrets/gw_prefix` (the random file server path prefix from step 3), then run
+   `MA_HOST=<server> deploy/deploy_y1.sh`, which installs the built app (`java/build_apk.sh` first) and points it at
+   Music Assistant (port 8095) and the file server (port 18099). `python3 provision/y1.py provision` asks for the same
+   values instead.
 5. **Home Assistant:** install the Y1 Player integration (HACS custom repository, or copy
    `custom_components/y1_player` into your config) and restart. Copy `deploy/device.example.json` to
-   `deploy/secrets/bedtime/device.json` and fill it in, then run `deploy/y1_setup.py secret` and `pair` (and
-   `op VAULT` to put the grown-up code in 1Password). To pair by hand instead, add the integration in Home Assistant
-   and paste the player key shown at the bottom of the player's About screen.
+   `deploy/secrets/bedtime/device.json` and fill it in. Create a Home Assistant long-lived access token for an admin and
+   save it to the file named by `ha_admin_token_file` in that config (or export `HA_TOKEN`): it is used on your computer
+   only, to pair, and never goes on the player. Then run `deploy/y1_setup.py secret` and `pair` (and `op VAULT` to put
+   the grown-up code in 1Password). To pair by hand instead, add the integration in Home Assistant and paste the player
+   key shown on the player's Status screen (main menu, Status, the "Player key" row; the second half is on the line
+   beneath).
 
 Every setting is then on the player's device page in Home Assistant. To share the bedtime budget with other speakers,
 link the bedtime controls to your existing helpers in the integration's options.

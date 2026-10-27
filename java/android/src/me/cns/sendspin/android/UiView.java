@@ -412,7 +412,9 @@ public final class UiView extends View {
     /** Hold centre: start listening (playback pauses); false where voice search does not apply. */
     public boolean startVoice() {
         if (voiceState != 0 || entry != null || lockShowing() || eng.hold.held(SystemClock.uptimeMillis())) return false;
-        if (!eng.startListening()) { eng.notice("The microphone isn\u2019t working"); return true; }
+        boolean ok;
+        try { ok = eng.startListening(); } catch (RuntimeException e) { ok = false; eng.cancelListening(); }
+        if (!ok) { eng.notice("The microphone isn\u2019t working"); return true; }
         voiceState = 1;
         clunk();
         invalidate();
@@ -424,9 +426,19 @@ public final class UiView extends View {
     /** Centre let go: work out what was said, then search for it. */
     public void stopVoice() {
         if (voiceState != 1) return;
-        final byte[] pcm = eng.stopListening();
+        final byte[] pcm;
+        try { pcm = eng.stopListening(); } catch (RuntimeException e) { cancelVoice(); return; }
         if (!Voice.anySpeech(pcm)) { voiceState = 0; eng.notice("Didn\u2019t hear anything: hold the centre button and speak"); invalidate(); return; }
         recognise(pcm);
+    }
+
+    /** Whatever voice is doing stops now (the activity paused, or a key-up never came): mic, playback and state recover. */
+    public void cancelVoice() {
+        if (voiceState == 0) return;
+        voiceGen++;
+        voiceState = 0;
+        eng.cancelListening();
+        invalidate();
     }
 
     private void recognise(final byte[] pcm) {
@@ -435,7 +447,7 @@ public final class UiView extends View {
         invalidate();
         new Thread(new Runnable() { public void run() {
             String t = null, err = null;
-            try { t = eng.transcribe(pcm); } catch (Exception e) { err = String.valueOf(e.getMessage()); }
+            try { t = eng.transcribe(pcm); } catch (Throwable e) { err = "Voice search failed"; }
             final String text = t, problem = err;
             post(new Runnable() { public void run() {
                 if (gen != voiceGen) return;
@@ -613,11 +625,11 @@ public final class UiView extends View {
                     new Runnable() { public void run() { sys.scan(); push(wifiScreen()); } })));
                 r.add(nav(new Row("Bluetooth headphones", btSummary(), new Runnable() { public void run() { sys.bindA2dp(); push(btScreen()); } })));
                 final int br = sys.brightnessPercent();
-                if (Help.available())
+                if (Help.available() || eng.giftArmed())
                     r.add(new Row("Armed for gifting: " + (eng.giftArmed() ? "yes" : "no"),
-                        eng.giftArmed() ? "the first unlock plays the Help video; select to cancel" : "locks it; the first unlock plays the Help video, loud", grownUp(new Runnable() { public void run() {
-                        boolean on = !eng.giftArmed(); eng.setGiftArmed(on);
-                        eng.notice(on ? "Armed: three taps will start the Help video" : "Not armed"); } })));
+                        eng.giftArmed() ? "the next unlock plays the Help video; select to cancel" : "the next unlock plays the Help video, loud", grownUp(new Runnable() { public void run() {
+                        boolean on = !eng.giftArmed(); eng.setGiftArmed(on, false);   // not locked: this row stays reachable to cancel
+                        eng.notice(on ? "Armed: the next unlock will start the Help video" : "Not armed"); } })));
                 r.add(new Row("Find My beacon: " + (eng.findMyEnabled() ? eng.beacon.status : "off"), "passing iPhones report where it is", grownUp(new Runnable() { public void run() {
                     eng.setFindMyEnabled(!eng.findMyEnabled()); } })));
                 r.add(new Row("Brightness: " + br + "%", "select to change", new Runnable() { public void run() {
@@ -1041,9 +1053,9 @@ public final class UiView extends View {
         holdSwallowUp = code;
         int left = eng.hold.press(code, now);
         if (left == 0) clunk(); else tick();
-        if (left == 0 && eng.giftArmed() && Help.available()) {     // a gifted iPod: the first thing it does is explain itself
-            eng.setGiftArmed(false);
-            playHelp(0, true);
+        if (left == 0 && eng.giftArmed()) {     // a gifted iPod: the first thing it does is explain itself
+            if (!Help.available()) eng.setGiftArmed(false);          // nothing to play: do not stay armed unseen
+            else if (!eng.bedtimeLocked()) playHelp(0, true);        // HelpActivity disarms once the video has really started
         }
         return true;
     }
@@ -1069,7 +1081,7 @@ public final class UiView extends View {
             return true;
         }
         if (voiceState == 2) {              // working out what was said: Back cancels, the rest waits
-            if (code == KeyEvent.KEYCODE_BACK) { voiceGen++; voiceState = 0; invalidate(); }
+            if (code == KeyEvent.KEYCODE_BACK) { voiceGen++; voiceState = 0; Voice.cancelLocal(); invalidate(); }
             return true;
         }
         if (code == 999) { startEntry("Password test", new Entry.Done() { public void done(String t) { eng.notice("typed: " + t); } }); return true; }  // test hook only

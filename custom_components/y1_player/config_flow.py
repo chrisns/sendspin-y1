@@ -52,12 +52,21 @@ class Y1OptionsFlow(OptionsFlow):
     """Link bedtime controls to helpers other automations already use (else the integration keeps its own)."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(data={k: v for k, v in user_input.items() if v})
+            for k in ("bedtime_start", "bedtime_end"):    # a helper with no time cannot be a window
+                st = self.hass.states.get(user_input.get(OPT_LINK[k]) or "")
+                if st is not None and st.attributes.get("has_time") is False:
+                    errors[OPT_LINK[k]] = "no_time"
+            notify = user_input.get(OPT_NOTIFY)
+            if notify and not ("." in notify and self.hass.services.has_service(*notify.split(".", 1))):
+                errors[OPT_NOTIFY] = "unknown_notify"
+            if not errors:
+                return self.async_create_entry(data={k: v for k, v in user_input.items() if v})
         o = self.config_entry.options
         time_sel = selector.EntitySelector(selector.EntitySelectorConfig(domain="input_datetime"))
         num_sel = selector.EntitySelector(selector.EntitySelectorConfig(domain=["input_number", "number"]))
-        return self.async_show_form(step_id="init", data_schema=vol.Schema({
+        return self.async_show_form(step_id="init", errors=errors, data_schema=vol.Schema({
             vol.Optional(OPT_LINK["bedtime_start"], description={"suggested_value": o.get(OPT_LINK["bedtime_start"])}): time_sel,
             vol.Optional(OPT_LINK["bedtime_end"], description={"suggested_value": o.get(OPT_LINK["bedtime_end"])}): time_sel,
             vol.Optional(OPT_LINK["bedtime_cap"], description={"suggested_value": o.get(OPT_LINK["bedtime_cap"])}): num_sel,

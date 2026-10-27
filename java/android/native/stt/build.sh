@@ -10,12 +10,14 @@
 set -e
 cd "$(dirname "$0")"
 V=v1.7.6
+VCOMMIT=a8d002cfd879315632a579e73f0148d06959de36      # what v1.7.6 pointed at when this was proven (a tag can be moved)
 MODEL=${MODEL:-tiny.en-q5_1}
 APP=me.cns.sendspin.android
 ADB="${ADB:-adb} -d"
 # a release bundle brings y1-stt already built: only build when zig is here (or there is no y1-stt)
 if command -v zig >/dev/null 2>&1 || [ ! -x y1-stt ]; then
   [ -d whisper.cpp ] || git clone --depth 1 --branch $V https://github.com/ggml-org/whisper.cpp
+  [ "$(git -C whisper.cpp rev-parse HEAD)" = "$VCOMMIT" ] || { echo "whisper.cpp is not at the pinned commit $VCOMMIT: delete whisper.cpp and run again" >&2; exit 1; }
   # zig as the compiler and archiver, through one-word wrappers (CMake mangles "zig cc", and macOS's own ar/ranlib
   # cannot index ARM ELF objects, which shows up as every whisper_* symbol undefined at the final link)
   mkdir -p zigbin
@@ -45,7 +47,17 @@ TC
   zig c++ -target arm-linux-musleabihf -mcpu=cortex_a7 -mfpu=neon-vfpv4 -O2 -static -s -std=c++17 -I$W/include -I$W/ggml/include \
     y1-stt.cpp $B/src/libwhisper.a $B/ggml/src/libggml.a $B/ggml/src/libggml-cpu.a $B/ggml/src/libggml-base.a -o y1-stt
 fi
-[ -f ggml-$MODEL.bin ] || curl -fL -o ggml-$MODEL.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-$MODEL.bin
+# the model is checked against its sha256 (known for the default; another MODEL is used unchecked, with a warning), and
+# downloaded to a .part file first so an interrupted download is never mistaken for the model
+case $MODEL in tiny.en-q5_1) WANT=c77c5766f1cef09b6b7d47f21b546cbddd4157886b3b5d6d4f709e91e66c7c2b ;; *) WANT= ;; esac
+sha() { if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1"; else sha256sum "$1"; fi | cut -d' ' -f1; }
+if [ -n "$WANT" ] && [ -f ggml-$MODEL.bin ] && [ "$(sha ggml-$MODEL.bin)" != "$WANT" ]; then rm -f ggml-$MODEL.bin; fi
+if [ ! -f ggml-$MODEL.bin ]; then
+  curl -fL -o ggml-$MODEL.bin.part https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-$MODEL.bin
+  if [ -n "$WANT" ] && [ "$(sha ggml-$MODEL.bin.part)" != "$WANT" ]; then rm -f ggml-$MODEL.bin.part; echo "the model does not match its pinned sha256: not using it" >&2; exit 1; fi
+  [ -n "$WANT" ] || echo "warning: no pinned sha256 for model $MODEL" >&2
+  mv ggml-$MODEL.bin.part ggml-$MODEL.bin
+fi
 ls -la y1-stt ggml-$MODEL.bin
 [ "$1" = install ] || exit 0
 $ADB push y1-stt /data/local/tmp/y1-stt

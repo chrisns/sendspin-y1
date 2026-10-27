@@ -49,6 +49,7 @@ public final class HaClient {
     private long loaded;                  // ha.json's time when read
     public volatile String lastError = "";
     public volatile boolean removed;      // the integration no longer knows this player: pair it again
+    private int refused;                 // HTTP 400s in a row (the integration's answer to a key it does not know)
 
     public HaClient(Context c, TrustedClock clk) {
         app = c;
@@ -76,7 +77,7 @@ public final class HaClient {
         }
     }
 
-    /** What to pair with in Home Assistant (shown under About; files/device.pub is read by y1_setup.py pair). */
+    /** What to pair with in Home Assistant (shown on the Status screen; files/device.pub is read by y1_setup.py pair). */
     public String publicKey() {
         String p = Base64.encodeToString(Crypto.publicKey(privateKey()), Base64.NO_WRAP);
         File f = new File(app.getFilesDir(), "device.pub");
@@ -94,6 +95,7 @@ public final class HaClient {
         totpKey = null;
         kOut = kIn = null;
         removed = false;
+        refused = 0;
         publicKey();
         File f = new File(app.getFilesDir(), "ha.json");
         loaded = f.lastModified();
@@ -158,7 +160,8 @@ public final class HaClient {
     private Map<String, Object> send(Map<String, Object> report) throws IOException {
         if (!configured()) throw new IOException(removed ? "not paired in Home Assistant: pair it again" : "Home Assistant not set up");
         Map<String, Object> msg = new HashMap<String, Object>(report);
-        msg.put("c", Long.valueOf(nextCounter()));
+        long sent = nextCounter();
+        msg.put("c", Long.valueOf(sent));
         byte[] nonce = new byte[12];
         RNG.nextBytes(nonce);
         byte[] ct = Crypto.aeadEncrypt(kOut, nonce, AAD, Json.write(msg).getBytes("UTF-8"));
@@ -168,8 +171,15 @@ public final class HaClient {
             int i = (good + k) % hooks.size();
             try {
                 Map<String, Object> r = open(post(hooks.get(i), body));
-                if (r.get("c") == null && r.get("last") instanceof Number) throw new Behind(((Number) r.get("last")).longValue());
+                // a sealed reply only counts for the request it answers: an old one (captured and replayed) is refused
+                if (r.get("c") == null && r.get("last") instanceof Number) {
+                    if (r.get("rc") != null && !(r.get("rc") instanceof Number && ((Number) r.get("rc")).longValue() == sent)) throw new IOException("stale reply from Home Assistant");
+                    throw new Behind(((Number) r.get("last")).longValue());
+                }
+                if (!(r.get("c") instanceof Number) || ((Number) r.get("c")).longValue() != sent) throw new IOException("stale reply from Home Assistant");
+                if (r.get("now") instanceof Number) clock.fromSealed(((Number) r.get("now")).longValue());   // authenticated, unlike a Date header
                 good = i;
+                refused = 0;
                 lastError = "";
                 return r;
             } catch (NotSent e) {
@@ -218,8 +228,10 @@ public final class HaClient {
             throw new NotSent(new URL(url).getHost() + ": " + e.getMessage());
         }
         int code = c.getResponseCode();
-        clock.fromHttpDate(c.getHeaderField("Date"));   // even a refusal carries the time
-        if (code == 400) { removed = true; throw new IOException("Home Assistant does not know this player's key: pair it again"); }
+        if (code == 400) {      // a proxy can say 400 once; only a run of them means the key is no longer known
+            if (++refused >= 5) removed = true;
+            throw new IOException("HTTP 400 from " + new URL(url).getHost() + (removed ? ": Home Assistant does not know this player's key, pair it again" : ""));
+        }
         if (code != 409 && code / 100 != 2) throw new IOException("HTTP " + code + " from " + new URL(url).getHost());
         InputStream in = code == 409 ? c.getErrorStream() : c.getInputStream();
         if (in == null) return "";

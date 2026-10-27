@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # The player: the parts of Solar's boot that are still needed once Solar's launcher is removed.
 # (Root is started by install-recovery.sh; Xposed by 99XposedInit.sh.)
-# adb only for computers whose key is in /data/misc/adb/adb_keys (Chris's Mac): adb here is root, so any other computer
+# adb only for computers whose key is in /data/misc/adb/adb_keys (the maintainer's computer): adb here is root, so any other computer
 # would get the grown-up code secret and the Home Assistant webhook. No keys file: left open, so nobody is locked out.
 if [ -s /data/misc/adb/adb_keys ] && [ "$(getprop ro.adb.secure)" != 1 ]; then
     setprop ro.adb.secure 1; stop adbd; start adbd

@@ -15,7 +15,7 @@ rom/solar-initd/
 
 # working files
 .shots/
-tools/
+/tools/
 REVIEW-*.md
 MA-ISSUE-*.md
 __pycache__/
@@ -40,6 +40,7 @@ java/android/native/stt/whisper.cpp/
 java/android/native/stt/whisper-cli
 java/android/native/stt/y1-stt
 java/android/native/stt/*.bin
+java/android/native/stt/*.part
 java/android/native/stt/zig-arm.cmake
 java/android/native/stt/zigbin/
 java/android/native/stt/*.o

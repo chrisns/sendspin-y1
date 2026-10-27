@@ -1,9 +1,11 @@
 # Development notes
 
 How the pieces were built and the traps found on the way. The README is the place to start.
+This file is a build log in time order: later sections supersede earlier ones, and the first sections are history
+(the prototype below has long since grown into the player described later).
 
 
-Prototype Sendspin player for the Innioasis Y1 (Solar firmware, Android 4.2.2).
+Prototype (historical): Sendspin player for the Innioasis Y1 (Solar firmware, Android 4.2.2).
 `sendspin_min.py` is stdlib + `cryptography` only, written so it can be ported line by line to Java.
 
 Proven  against Music Assistant 2.10.7 in Docker, client-initiated on port 8927:
@@ -16,13 +18,13 @@ Received audio has the right tones and level with no gaps; it is not sample-exac
 Android app (`java/android`, `java/build_apk.sh`, targets API 17, compiled clean against Android 4.2.2's own class library): runs the whole flow in an Android 5.0.2 emulator against the test server,
 with AudioTrack consuming 528,960 frames in 12.0 s wall (real time). Audibility was not checked (headless emulator).
 
-Not yet done: running on the real Y1 (Android 4.2.2, Solar), Kalman time filter (this uses best-RTT offset),
-persisted client key (a new identity is generated every run), AirPlay to Sonos, Apple Music.
+Everything the prototype lacked (running on the real Y1, a persisted client key, AirPlay to Sonos, Apple Music) has since
+been done; only a Kalman time filter is still missing (the clock uses the best-RTT offset).
 
-Test rig: `docker run -d --name ma-sendspin-test -p 18095:8095 -p 18927:8927 -v $PWD/data:/data ghcr.io/music-assistant/server:latest`,
-create the admin via POST /setup, run the client, wait ~25 s for the universal player, then
-`MA_TOKEN=... python3 tools/ma_api.py player_queues/play_media '{"queue_id":"<id>","media":"http://127.0.0.1:8765/tone.wav"}'`
-(serve the tone from inside the container: Docker Desktop cannot reach host ports).
+Test rig for the Music Assistant side: `docker run -d --name ma-sendspin-test -p 18095:8095 -p 18927:8927 -v $PWD/data:/data ghcr.io/music-assistant/server:latest`,
+create the admin via POST /setup, run the client, wait ~25 s for the universal player, then call
+`player_queues/play_media` on its websocket API with a tone served from inside the container (Docker Desktop cannot
+reach host ports). The helper script for that is not published.
 
 ## Y1 audiobook player (current app)
 
@@ -40,18 +42,18 @@ websocket API and lists the audiobooks in MA's library.
 - Media buttons work with the screen off (MediaButtonReceiver).
 
 Deploy: `deploy/deploy_y1.sh` (builds, installs, provisions host and the child's token from `deploy/secrets/`, gitignored).
-Test without touching the wheel: `tools/k.sh DOWN CENTER ...` presses keys in the app (root-only broadcast) and screenshots to
-/tmp/y1.png. `tools/check_gateway.py` verifies every book is served. `adb kill-server` fixes a hung adb.
+Test without touching the wheel: `adb shell am broadcast -a me.cns.ab.KEY --ei code N` presses a key in the app (a
+root-only broadcast; see Hold). `adb kill-server` fixes a hung adb. (My local helper scripts for this are not published.)
 
-Not done: Apple Music (add the provider in MA's web UI, then it appears under Music), a Kalman clock filter for Sendspin,
-proving the click-wheel direction on the real wheel (`Last key` in Status shows what each control sends).
+(Historical: Apple Music is now the core library feature, added as a provider in MA's web UI. Still open: a Kalman clock
+filter for Sendspin. The click-wheel direction is a setting; `Last key` in Status shows what each control sends.)
 
 ## Music sync
 
 `deploy/music-sync/` + `deploy/music-sync.yaml`: a service in the cluster (Music Assistant image) that records every track of one
 MA playlist (or, with LIBRARY_PROVIDER, the child's whole Apple Music library) to 192 kbps stereo MP3 through MA itself (Apple Music can only be decrypted by MA), with cover jpgs and
-a `manifest.json`, into `/var/lib/music-sync`. The file server publishes it under `<prefix>/music/`. 4 workers (more trips Apple's
-stream limit); it pauses while anyone plays a music track elsewhere. The playlist is re-read every 5 minutes, new tracks jump the
+a `manifest.json`, into `/var/lib/music-sync`. The file server publishes it under `<prefix>/music/`. 8 capture players are started (`WORKERS`); how many run at once is learned and backed off when Apple refuses, which in
+practice settles around 7; it pauses while anyone plays a music track elsewhere. The playlist is re-read every 5 minutes, new tracks jump the
 backlog, removed tracks are deleted. The Y1 (`MusicLibrary`) mirrors the manifest to `/sdcard/Music`, plays from files (next/previous,
 shuffle) and, with a speaker as target, tells MA to play the playlist from the same track. Position is not kept for music.
 Create the service: token secret `music-sync-token`, configmap from `deploy/music-sync/`, `kubectl apply -f deploy/music-sync.yaml`.
@@ -112,10 +114,12 @@ The iPod advertises Apple offline-finding packets so passing iPhones report wher
 
 ## Bedtime limit (shared with Home Assistant)
 
-Home Assistant's the child rules (`the bedtime package`, automation `the bedtime counter`) give her
-`the cap helper (input_number)` of listening between the window start and end helpers (input_datetime).
-The iPod shares that budget: it adds its own playing minutes to `the used-minutes counter` (her room
-speaker is counted by HA itself), and locks to a night-sky screen when the budget is spent.
+The integration provides four bedtime controls: a time for the window start (default 19:45), a time for the window end
+(default 06:30), a number for the allowance in minutes (default 20) and a counter of used minutes. To share the budget
+with an existing setup, link each one in the integration's options (`link_bedtime_start` and `link_bedtime_end` to
+input_datetime entities, `link_bedtime_cap` and `link_bedtime_used` to input_number entities). The player adds its own
+playing minutes to the used counter (a speaker in her room is counted by Home Assistant itself), and locks to a
+night-sky screen when the budget is spent.
 
 - How it talks to HA: through its own integration, Y1 Player (`custom_components/y1_player`), which
   replaced the earlier mobile_app device. The player has an X25519 key pair (`files/device.key`, made on first run,
@@ -125,10 +129,17 @@ speaker is counted by HA itself), and locks to a night-sky screen when the budge
   ChaCha20-Poly1305 message (keys from HKDF over the X25519 secret, counter against replay) carrying sensors, location,
   played minutes {minutes, seq} and unlocks; the sealed reply carries every setting, the bedtime budget and any find
   request. Settings carry a change time each way: newest wins, and a new pairing adopts the player's current values.
+  Wire details (both sides): a reply is only accepted if its sealed `c` equals the request's counter (a 409 carries
+  `last` plus `rc`, the request counter); the sealed `now` sets the clock (never the HTTP `Date`), and the reply returns
+  `played_seq`. The played batch {seq, n} is frozen on the player and resent unchanged until `played_seq` reaches its
+  seq; a `played_seq` ahead of the player's seq means the batch was dropped and the player adopts it and resends. The
+  integration holds counted minutes in `pending_minutes` until a linked helper is readable, ignores device setting
+  stamps more than 5 minutes ahead and values outside the setting's definition, and five 400s in a row mark the
+  player as not paired. Replies from an older integration lack `played_seq`/`rc` and are handled as before.
 - Limits of read-only (tested 26 Oct): it cannot control entities, but HA cannot stop a mobile app device calling
   services that target no entity: scripts called directly (`script.alarm_disarm`...), shell_command, rest_command,
   notify. Accepted as enough; the full lockdown (webhook triggers only, settings via music-sync) was offered and declined.
-- In HA it is the device "the player" with sensors `sensor.<device>_*` / `binary_sensor.<device>_*`: battery,
+- In HA it is the device (named after the player, e.g. "Y1") with sensors `sensor.<device>_*` / `binary_sensor.<device>_*`: battery,
   charging, now playing (artist, kind, playing), playing, listen on, bedtime minutes used/left, bedtime locked, buttons on
   hold, Find My, Wi-Fi. Sent every minute in the window (5 min outside) and straight away on play/pause, track, hold or
   lock changes; sensors HA does not know yet are registered with their names on the fly.
@@ -142,7 +153,7 @@ speaker is counted by HA itself), and locks to a night-sky screen when the budge
   the iPod then shows "removed from Home Assistant" (410). Re-register with `child` and `push`.
 
 - Offline-proof: settings and the counter are cached (`Bedtime`, pure Java, `java/android/test/run.sh`); minutes
-  played offline are sent later. Time comes from `TrustedClock`: NTP on any Wi-Fi, HA's `Date` header, GPS away from
+  played offline are sent later. Time comes from `TrustedClock`: NTP on any Wi-Fi, the sealed `now` in HA's reply, GPS away from
   Wi-Fi, and elapsedRealtime in between (a flat battery cannot wind it back).
 - Local time anywhere: `Geo` sets the timezone from a GPS fix via the offline map `assets/tzgrid.bin`
   (`java/android/tools/make_tzgrid.py`, timezonefinder data) or GeoIP (ip-api.com) on Wi-Fi.
@@ -169,8 +180,8 @@ playback), 996 lock screen, 995 night theme. Emulator: the y1test AVD is arm64-o
 
 Like the iPod's hold switch, in software (`KeyHold.java`, unit-tested in `test/BedtimeTest.java`). After a quiet spell
 (Settings > Hold after: 30 s, 1 min (default), 2 min, 5 min or never) the buttons stop doing anything. While something
-plays the screen stays on Now Playing with the unlock prompt over the scrubber; otherwise it shows the time, "the child's
-iPod" and how to return it (an email address). No "unlocked" message: the screen coming back says it. Pressing the same button 3 times within
+plays the screen stays on Now Playing with the unlock prompt over the scrubber; otherwise it shows the time, the owner's
+name with "iPod" and how to return it (an email address). No "unlocked" message: the screen coming back says it. Pressing the same button 3 times within
 the unlock time (Settings > Unlock: 0.5 to 2 s, default 1 s) brings them back; the screen counts the presses with dots and
 says how many more of which button. Wheel turns never count, so a wheel rubbing in a pocket cannot unlock it, and none of
 the unlocking presses act. Headphone buttons (the "AVRCP" input device) still play and pause, as with an iPod's remote.
@@ -189,7 +200,7 @@ presses for testing: `sendevent /dev/input/event0 1 232 1/0` (the wheel itself i
 - New songs: the manifest stamps when each song first appeared (`added`, `meta["first_seen_v3"]`); Music shows the last
   30 days, newest first.
 - Favourites: hold the centre button on a song (or on Now Playing) to add or remove it. Kept on the iPod, mirrored to the
-  MA playlist "the child’s Favourites" (Favourites.java; the iPod is the source of truth).
+  MA playlist "<owner>'s Favourites" (Favourites.java; the iPod is the source of truth).
 - Chapters: from MA's audiobook metadata, cached in files/chapters/ for offline. Next/Previous jump chapters (Previous
   within 4 s of a start goes back one); holding them, or fast forward/rewind, skips 30 s. Book page has a Chapters list,
   Now Playing shows "Chapter N of M".
@@ -201,9 +212,11 @@ presses for testing: `sendevent /dev/input/event0 1 232 1/0` (the wheel itself i
 
 ## Review fixes 
 
-An adversarial review (REVIEW-2026-10-26.md) confirmed 70 defects; all are fixed. Things that changed behaviour:
-- adb needs the maintainer's key: `/data/misc/adb/adb_keys` plus `ro.adb.secure=1` set by `99PlayerInit.sh` at boot (no keys
-  file: left open, nobody locked out). Another computer gets "unauthorized". The same script resets MediaTek's xlog
+An adversarial review (26 Oct 2026; the report is not published) confirmed 70 defects; all were fixed. Things that changed behaviour:
+- adb is locked to a key file on the device: `99PlayerInit.sh` sets `ro.adb.secure=1` at boot when `/data/misc/adb/adb_keys`
+  exists and is not empty (no keys file: left open, nobody locked out). A fresh provision installs no key, so a new unit
+  stays open (and root); to lock it, append your `~/.android/adbkey.pub` to that file as root (see PROVISIONING.md). A
+  computer whose key is not listed gets "unauthorized". The same script resets MediaTek's xlog
   filter to info after the adbd restart (otherwise only errors are logged).
 - Home Assistant payloads are encrypted end to end (now by the Y1 Player integration, see above), so the Nabu Casa
   cloudhook sees ciphertext. Played minutes carry a `seq` the integration dedupes; failover to the cloudhook only when
@@ -231,7 +244,7 @@ Streaming fix: Poly1305 in 26-bit limbs (Crypto.java); the BigInteger version co
 Lyrics: LRCLIB first, then Music Assistant's lyrics providers (Genius); plain lyrics are marked [unsynced:1] and scroll
 without a highlighted line.
 - Remove from my iPod (search page of a synced song): Music Assistant `music/library/remove_item` as the child, which the
-  local MA patch (~/httpdocs/infra/music-assistant/patches/sitecustomize.py) makes delete from her Apple Music library
+  local MA patch (`deploy/music-assistant-patch/sitecustomize.py`) makes delete from her Apple Music library
   (only accounts she can see), plus the "the player: removed" playlist that music-sync leaves out. Re-adding from
   search takes it off that list.
 

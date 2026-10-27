@@ -17,12 +17,12 @@ data:
   default.conf: |
     server {
       listen 18099;
-      location /79009a5b057ff85222382696/ {
+      location /CHANGE-ME-RANDOM-PREFIX/ {
         alias /audiobooks/;
         autoindex off;
         add_header Accept-Ranges bytes;
       }
-      location /79009a5b057ff85222382696/music/ {
+      location /CHANGE-ME-RANDOM-PREFIX/music/ {
         alias /music-sync/;
         autoindex off;
         add_header Accept-Ranges bytes;

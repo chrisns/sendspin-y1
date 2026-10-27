@@ -122,25 +122,45 @@ final class Voice {
     static String local(File dir, byte[] pcm) {
         File bin = new File(dir, "y1-stt"), model = new File(dir, "model.bin");
         if (!hasLocal(dir)) return null;
-        File raw = new File(dir, "voice.pcm");
+        cancelLocal();                       // one y1-stt at a time on a single core: a new search ends the old one
+        File raw = null;
+        Thread dog = null;
         try {
+            raw = File.createTempFile("voice", ".pcm", dir);    // unique, so a cancelled search cannot clobber this one
             FileOutputStream o = new FileOutputStream(raw);
             try { o.write(pcm); } finally { o.close(); }
-            Process p = new ProcessBuilder(bin.getPath(), model.getPath(), raw.getPath()).start();
+            final Process p = new ProcessBuilder(bin.getPath(), model.getPath(), raw.getPath()).start();
+            running = p;
+            dog = new Thread(new Runnable() { public void run() {      // a hung model must not burn the CPU for ever
+                try { Thread.sleep(STT_TIMEOUT_MS); p.destroy(); } catch (InterruptedException ignored) { }
+            } }, "voice-stt-dog");
+            dog.setDaemon(true);
+            dog.start();
             p.getOutputStream().close();
             InputStream in = p.getInputStream();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buf = new byte[4096];
             int n;
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-            if (p.waitFor() != 0) return null;
+            if (p.waitFor() != 0) return null;       // also what a destroy() (timeout or Back) looks like
             String t = new String(out.toByteArray(), "UTF-8").replaceAll("\\[[^\\]]*\\]|\\([^)]*\\)", " ").replaceAll("\\s+", " ").trim();
             return unrepeat(t.replaceAll("[.!?]+$", ""));
         } catch (Exception e) {
             return null;
         } finally {
-            raw.delete();
+            if (dog != null) dog.interrupt();
+            if (raw != null) raw.delete();
         }
+    }
+
+    private static final long STT_TIMEOUT_MS = 30000;
+    private static volatile Process running;
+
+    /** Kill a transcription in progress (Back while it works out what was said, or a new search starting). */
+    static void cancelLocal() {
+        Process p = running;
+        running = null;
+        if (p != null) p.destroy();
     }
 
     /** Whisper on a short window can loop ("give you better give you better ..."): keep the phrase once. */

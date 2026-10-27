@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add a Y1 player",
-        "description": "The player shows its public key under Settings > About (or run deploy/push_bedtime.py pair, which does all of this for you).",
+        "description": "The player shows its public key on its Status screen (or run deploy/y1_setup.py pair, which does all of this for you).",
         "data": {
           "name": "Name",
           "device_public_key": "Player public key"
@@ -31,6 +31,10 @@
           "stt_entity": "Speech-to-text for voice search (when the player has no local model; default Home Assistant Cloud)"
         }
       }
+    },
+    "error": {
+      "no_time": "That helper has no time, so it cannot be a bedtime window.",
+      "unknown_notify": "There is no such notify service (for example notify.mobile_app_phone)."
     }
   },
   "services": {
