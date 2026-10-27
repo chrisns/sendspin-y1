@@ -1,0 +1,17 @@
+{
+  "ha_url": "https://homeassistant.local:8123",
+  "ha_admin_token_file": "~/.config/y1/ha_admin_token",
+  "child_user": "Sam",
+  "device_id": "y1-player",
+  "otp_title": "Sam's Y1 grown-up code",
+  "entities": {},
+  "events": {},
+  "sensor_prefix": "y1_",
+  "identity": {
+    "owner_name": "Sam",
+    "device_name": "Sam's Y1",
+    "lost_contact": "If found, please call 07700 900000|or email lost@example.com",
+    "home_wifi": "MyHomeWiFi",
+    "counted_speakers": ""
+  }
+}
