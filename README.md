@@ -87,6 +87,10 @@ You need: a Y1 (Type A, Android 4.2) flashed with the Solar ROM and rooted, a Mu
 Apple Music added as its own provider, a Home Assistant instance, and Android build tools (SDK build-tools 34, the
 android-17 platform, JDK, and [zig](https://ziglang.org/) for the native helpers).
 
+The quick way: `python3 provision/y1.py doctor | fetch | flash | provision` (or `all`), which downloads the Solar ROM and
+the flashing tool from their own projects, flashes, builds (or uses a release bundle's prebuilt app) and sets the Y1 up;
+see [docs/PROVISIONING.md](docs/PROVISIONING.md) for what is fetched rather than shipped, and why. By hand:
+
 1. **ROM:** with the Y1 on USB, `rom/make-player-rom.sh` removes Solar's launcher and helpers and installs the boot
    script; `rom/bt/install_shim.sh` installs the Bluetooth shim (optional, for the beacon with headphones).
 2. **Music Assistant:** create a Music Assistant user for the child with access to their own Apple Music provider and
