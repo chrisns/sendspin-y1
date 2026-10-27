@@ -126,7 +126,8 @@ public final class UiView extends View {
                 }
                 long tnow = eng.clock.now();
                 if (eng.bedtime.inWindow(tnow)) {
-                    if (eng.bedtime.unlocked(tnow)) r.add(emptyRow("Grown-up unlock until " + new java.text.SimpleDateFormat("H:mm", java.util.Locale.UK).format(new java.util.Date(eng.bedtime.unlockUntil))));
+                    if (eng.shotMode) { }       // screenshot mode: no unlock line, so the pictures do not show it
+                    else if (eng.bedtime.unlocked(tnow)) r.add(emptyRow("Grown-up unlock until " + new java.text.SimpleDateFormat("H:mm", java.util.Locale.UK).format(new java.util.Date(eng.bedtime.unlockUntil))));
                     else r.add(new Row("Bedtime listening: " + eng.bedtime.remaining(tnow) + " min left", "shared with your bedroom speaker", null));
                 }
                 List<Engine.Book> ip = eng.inProgress();
@@ -664,8 +665,8 @@ public final class UiView extends View {
                 r.add(new Row("Click loudness: " + lv[eng.clickLevel()], "select to change", new Runnable() { public void run() {
                     eng.setClickLevel((eng.clickLevel() + 1) % 3); tick(); } }));
                 final long tn = eng.clock.now();
-                r.add(new Row("Bedtime: " + (eng.bedtime.unlocked(tn) ? "unlocked" : eng.bedtime.used(tn) + " of " + eng.bedtime.capMin + " min"),
-                    Bedtime.hhmm(eng.bedtime.startMin) + " to " + Bedtime.hhmm(eng.bedtime.endMin) + (eng.bedtime.unlocked(tn) ? " \u00b7 select to lock again" : " \u00b7 set in Home Assistant"),
+                r.add(new Row("Bedtime: " + (eng.bedtime.unlocked(tn) && !eng.shotMode ? "unlocked" : eng.bedtime.used(tn) + " of " + eng.bedtime.capMin + " min"),
+                    Bedtime.hhmm(eng.bedtime.startMin) + " to " + Bedtime.hhmm(eng.bedtime.endMin) + (eng.bedtime.unlocked(tn) && !eng.shotMode ? " \u00b7 select to lock again" : " \u00b7 set in Home Assistant"),
                     new Runnable() { public void run() { if (eng.bedtime.unlocked(eng.clock.now())) { eng.relock(); eng.notice("Bedtime limit back on"); } } }));
                 r.add(nav(new Row("Power", "sleep, power off, restart (or hold Menu)", new Runnable() { public void run() { openPowerMenu(); } })));
                 return r;
@@ -1076,6 +1077,7 @@ public final class UiView extends View {
 
     public boolean onKey(int code, KeyEvent ev) {
         lastKey = KeyEvent.keyCodeToString(code);
+        if (code == 989 || code == 988) { eng.shotMode = code == 989; top().refresh(); invalidate(); return true; }   // test hooks: screenshot mode on (989) / off (988), see Engine.shotMode
         if (code == 990) {      // test hook only: recognise /sdcard/voice-test.pcm (16 kHz mono 16-bit) as if spoken
             try { recognise(Net.readBytes(new java.io.File("/sdcard/voice-test.pcm"))); } catch (Exception e) { eng.notice("no test audio"); }
             return true;

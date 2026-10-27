@@ -17,7 +17,7 @@ on-screen shot list (screenshots), and plain documentation for grown-ups. One so
 2. **Re-take the screenshots**: `python3 docs/screenshots/capture.py` (device on USB, outside the bedtime window: it refuses within 20 minutes of it, adb, root; see its header).
    It drives the app through the debug key hook, restores the device's state, and blurs phone numbers, email addresses and
    Wi-Fi names. Never keep unblurred PNGs under `docs/screenshots/`. Look at every image after a run.
-   The Home Assistant device page is captured through Claude in Chrome (a new tab on the user's Home Assistant, signed in
+   The Home Assistant device page is captured through Claude in Chrome (docs/screenshots/ha_page.py blurs it) (a new tab on the user's Home Assistant, signed in
    already; never type credentials); `capture.py` documents the steps.
 3. **Rebuild the derived files**: `python3 docs/guide/build.py` resolves `{{shot:name}}` markers to image links with captions
    from `docs/screenshots/manifest.json`, writes `docs/guide/SCRIPT.md` (all narration, timed) and `chapters.json`. CI-style

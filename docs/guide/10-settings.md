@@ -15,9 +15,10 @@ title: Settings
 
 ## On screen
 
-- ![Scroll down for Listen on, Settings, Status and Help.](../screenshots/02-menu-more.png) <!-- shot:menu-more -->
-- ![Speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction.](../screenshots/33-ha-device-config-more.png) <!-- shot:ha-device-config-more -->
-- {{shot:wifi}}
+- ![Wi-Fi, Bluetooth headphones, brightness, sleep timer, volume limit, wheel click and more.](../screenshots/24-settings.png) <!-- shot:settings -->
+- ![Settings a grown-up protects with the code are marked.](../screenshots/25-settings-more.png) <!-- shot:settings-more -->
+- ![Pick a network and type its password with the wheel. Joining needs no code; forgetting one does.](../screenshots/26-wifi.png) <!-- shot:wifi -->
+- ![Speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction.](../screenshots/36-ha-device-config-more.png) <!-- shot:ha-device-config-more -->
 
 ## For grown-ups
 

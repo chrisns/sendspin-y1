@@ -2090,7 +2090,7 @@ public final class Engine {
 
     private void bedtimeTick(long el) {
         long now = clock.now();
-        if (lastCountAt != 0 && countsNow()) playedMs += Math.min(5000, el - lastCountAt);
+        if (lastCountAt != 0 && !shotMode && countsNow()) playedMs += Math.min(5000, el - lastCountAt);
         lastCountAt = el;
         if (playedMs >= 60000) { playedMs -= 60000; bedtime.playedMinute(now); saveBedtime(); }
         if (playing && bedtime.locked(now)) {
@@ -2131,6 +2131,7 @@ public final class Engine {
 
     /** Time, timezone and the shared counter, whenever there is Wi-Fi. */
     private void bedtimeSync() {
+        if (shotMode) return;                           // screenshot mode: nothing goes to (or comes from) Home Assistant
         ha.maybeReload();
         long el = android.os.SystemClock.elapsedRealtime();
         boolean wifi = onWifi();
@@ -2797,6 +2798,13 @@ public final class Engine {
     // ---- voice search: hold the centre button and say what to find
 
     public final Voice voice = new Voice();
+
+    /**
+     * Screenshot mode (test hook 989, off after every restart): no Home Assistant sync, no bedtime minutes counted, and
+     * no "grown-up unlock" lines on screen, so a run of docs/screenshots/capture.py changes nothing outside the iPod
+     * and the pictures do not show the unlock.
+     */
+    public volatile boolean shotMode;
     private volatile boolean voicePaused;   // we paused playback to listen: resume afterwards
 
     /** Start listening (pausing whatever plays); false if the microphone could not start. */

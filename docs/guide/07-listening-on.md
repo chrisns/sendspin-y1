@@ -15,8 +15,8 @@ title: Listening on speakers and headphones
 
 ## On screen
 
-- {{shot:listen-on}}
-- {{shot:bluetooth}}
+- ![Move what you are listening to to any speaker in the house, and back, from where you stopped.](../screenshots/23-listen-on.png) <!-- shot:listen-on -->
+- ![Pair headphones and the sound moves to them.](../screenshots/27-bluetooth.png) <!-- shot:bluetooth -->
 
 ## For grown-ups
 

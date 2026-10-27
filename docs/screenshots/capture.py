@@ -3,6 +3,7 @@
 
   docs/screenshots/capture.py [--only NAME,NAME] [--raw DIR] [--result-down N]
 
+Safety: it plays music while it works (silently), so it refuses to run unless the music volume of every output is 0.
 Needs: the Y1 on USB (adb -d, root), the app running, Pillow, macOS `say` + afconvert (for the voice search clip; that
 step is skipped without them). The Home Assistant page is captured separately (see .claude/skills/y1-docs/SKILL.md).
 
@@ -29,7 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ADB = os.environ.get("ADB") or shutil.which("adb") or os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
 APP = "me.cns.sendspin.android"
 UP, DOWN, CENTER, BACK, MENU = 19, 20, 23, 4, 82
-HOLD, DARK, LOCKPREVIEW, PREVIEW, VOICETEST = 994, 995, 996, 997, 990
+HOLD, DARK, LOCKPREVIEW, PREVIEW, VOICETEST, SHOTMODE, SHOTMODE_OFF = 994, 995, 996, 997, 990, 989, 988
 
 # Regions (x0, y0, x1, y1 on the 480x360 screen) painted over before a screenshot is saved.
 CONTACT = (20, 158, 280, 205)       # the "if found" phone number and email on the lock screen
@@ -39,10 +40,21 @@ SSID_SUB = (20, 70, 420, 92)        # "connected to <network>" under the Wi-Fi r
 # The order the screenshots come in the docs: NN in NN-name.png is the position here, so a partial run (--only) keeps
 # every file's number and only replaces the files it takes. manifest.json is merged the same way.
 ORDER = ["menu", "menu-more", "now-playing", "in-progress", "book-now-playing", "authors", "books", "book-page", "chapters",
-         "music", "music-more", "favourites", "new-songs", "artists", "search", "voice-listening", "voice-thinking",
+         "music", "music-more", "favourites", "new-songs", "artists", "artist", "artist-songs", "album-tracks", "search", "voice-listening", "voice-thinking",
          "voice-results", "voice-result-page", "listen-on", "settings", "settings-more", "wifi", "bluetooth", "status", "help",
          "help-video", "hold", "bedtime-dark", "bedtime-lock", "ha-device-top", "ha-device-config", "ha-device-config-more"]
 RESULT_DOWN = 0     # --result-down N
+UNLOCKED = False    # a grown-up has unlocked bedtime: the main menu has an extra line ("Grown-up unlock until ...") under Continue
+# Where things are, as DOWN presses (the wheel) from the top of a list. Change them when the library changes.
+ARTIST_DOWN = 13    # Music > Artists: down to Taylor Swift (the demo artist: lots of albums, every song has lyrics)
+AUTHOR_DOWN = 6     # Audiobooks: down to J.K. Rowling (the demo author: Harry Potter)
+BOOK_DOWN = 3       # her books: down to The Goblet of Fire
+# On a book's page the rows are: Play (or Resume at.. and Start again, once it has been listened to), Remove download,
+# Chapters, Listen on. A press of CENTER on "Remove download" REMOVES THE BOOK from the iPod, so the count to Chapters
+# must match the page as it is right now: look at book-page.png after a run, and after changing a book's progress.
+CHAPTERS_DOWN = 2
+MUSIC = (DOWN, DOWN, DOWN, CENTER)                              # main menu > Music
+ARTISTS = MUSIC + (DOWN,) * 4 + (CENTER,)                       # > Artists
 SHOTS = []          # filled by shot()
 
 
@@ -54,6 +66,46 @@ def sh(*a, out=False, check=True):
 
 def su(cmd, out=False):
     return sh("shell", "su -c '%s'" % cmd, out=out)
+
+
+QUIET = "settings put system volume_music_speaker 0; settings put system volume_music_headset 0; settings put system volume_music_headphone 0; settings put system volume_music_bt_a2dp 0"
+
+
+def loud_outputs():
+    """Output devices whose music volume is not 0. A screenshot run must never be able to make a noise: refuse to start
+    unless every output (speaker, headphones, Bluetooth) is at 0. Pressing the volume keys only changes the output in use,
+    and the iPod can route to another one, so set them all and reboot (see QUIET and the README of this folder)."""
+    line = [l for l in sh("shell", "dumpsys audio", out=True).splitlines() if "Current:" in l][0]
+    loud = []
+    for part in line.split("Current:")[1].split(","):
+        k, _, v = part.strip().partition(":")
+        if k.strip() in ("2", "4", "8", "80", "800", "1000", "2000", "4000") and v.strip() not in ("", "0"):
+            loud.append(k.strip())
+    return [d for d in loud if d in ("2", "4", "8", "80")]      # speaker, wired headset, headphone, Bluetooth A2DP
+
+
+def playing_now():
+    """True if the iPod is producing sound (silently here): an active track on the audio mixer."""
+    out = sh("shell", "su -c 'dumpsys media.audio_flinger'", out=True).splitlines()
+    for i, l in enumerate(out):
+        if l.strip().endswith("active tracks"):
+            rows = []
+            for r in out[i + 2:]:
+                if not r.strip(): break
+                rows.append(r)
+            return any(r.split()[0].isdigit() for r in rows if r.split())
+    return False
+
+
+def pause_if_playing():
+    if playing_now():
+        key(85, gap=0.8)
+
+
+def nav(path):
+    """The main menu's first move down from Continue takes one more press while bedtime is unlocked (that extra line)."""
+    path = tuple(path)
+    return ((DOWN,) + path) if UNLOCKED and path and path[0] == DOWN else path
 
 
 def awake():
@@ -167,22 +219,34 @@ def reset(raw, ref):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="comma separated screenshot names to take")
+    ap.add_argument("--ignore-bedtime", action="store_true", help="a grown-up has unlocked bedtime with the code: go ahead (the screens come out in the dark theme)")
     ap.add_argument("--raw", help="where raw (unblurred) captures go; default a temp directory")
     ap.add_argument("--result-down", type=int, default=0, help="DOWN presses from the first voice result to a streamed one (see voice())")
     a = ap.parse_args()
     global RESULT_DOWN
     RESULT_DOWN = a.result_down
+    global UNLOCKED
+    UNLOCKED = False        # screenshot mode (hook 989, below) hides the unlock line, so the menu rows are where they always are
     raw = a.raw or tempfile.mkdtemp(prefix="y1raw-")
     os.makedirs(raw, exist_ok=True)
     only = set(a.only.split(",")) if a.only else None
     started_asleep = not awake()
+    su("svc power stayon true")                  # injected keys do not count as activity: the screen would sleep mid-run
+    time.sleep(15)                               # let Wi-Fi and the music server connect: the first screens showed "Offline" otherwise
     if only and "bedtime-live" in only:      # it really is bedtime and the iPod is on its lock screen: take it as it is
         if started_asleep: su("input keyevent 26"); time.sleep(2)
         shot(raw, "bedtime-lock", "Bedtime", "When tonight's listening is used up, it says goodnight. Only a grown-up's code (or Wi-Fi settings) works.", wait=0.3)
         return finish(raw, a, started_asleep, None, leave=False)
     before_state = read_state()
-    bedtime_guard(before_state)
-    ensure_awake()
+    if not a.ignore_bedtime: bedtime_guard(before_state)
+    ensure_awake()                               # (keys are ignored while the buttons are on hold, so this comes first)
+    key(SHOTMODE, gap=0.5)                       # screenshot mode: no Home Assistant sync or minutes counted, no unlock lines (app restart = off)
+    pause_if_playing()
+    loud = loud_outputs()
+    if loud:
+        sys.exit("music volume is not 0 on output(s) %s: this tool starts playback while it works. Silence everything first:\n"
+                 "  adb -d shell \"su -c '%s; reboot'\"\n(note the old values: settings get system volume_music_speaker etc., "
+                 "and put them back, then reboot, when you are done)" % (", ".join(loud), QUIET))
     key(BACK, gap=0.5)
     # the reference for "at the main menu": reached by backing out until the title bar stops changing
     for _ in range(10): key(BACK, gap=0.5)
@@ -199,12 +263,13 @@ def main():
         for attempt in range(3):
             reset(raw, ref)
             if not path: break
+            path = nav(path)
             key(*path[:-1], gap=0.6)
             before = Image.open(grab(raw, "_before")).convert("L")
             key(path[-1], gap=0.6)
             time.sleep(1.0)
             now = Image.open(grab(raw, "_after")).convert("L")
-            if ImageStat.Stat(ImageChops.difference(before, now)).mean[0] > 2: break
+            if path[-1] != CENTER or ImageStat.Stat(ImageChops.difference(before, now)).mean[0] > 2: break   # only a CENTER must change the screen
             print("  (%s: the last press was lost, starting this one again)" % name)
         else:
             sys.exit("%s: could not get there; stopping rather than guess" % name)
@@ -212,6 +277,17 @@ def main():
         shot(raw, name, title, caption, boxes, wait)
 
     M = lambda *k: k
+
+    def prepare():
+        """Continue should be a song (Taylor Swift), not whatever was playing: shuffle her songs, silently, then pause."""
+        if only is not None and "prepare" not in only: return
+        reset(raw, ref)
+        key(*nav(ARTISTS), *([DOWN] * ARTIST_DOWN), CENTER, CENTER, gap=0.7)   # artist page > All songs (a list of songs)
+        key(CENTER, gap=1.5)                                               # the first row is "Shuffle all"
+        time.sleep(2.5)
+        key(85, gap=0.6)                                                   # play/pause: paused, the song stays as Continue
+        reset(raw, ref)
+    prepare()
     # ---- the main menu
     screen("menu", "The main menu", "Continue where you stopped, your audiobooks, your music, speakers, settings, help.", M())
     screen("menu-more", "The rest of the menu", "Scroll down for Listen on, Settings, Status and Help.", M(*([DOWN] * 8)))
@@ -219,22 +295,25 @@ def main():
     screen("now-playing", "Now playing", "The cover, the title, who is singing, and where it is playing. Turn the wheel for volume.", M(PREVIEW), wait=1.4)
     # ---- audiobooks
     screen("in-progress", "In progress", "Books you have started, with how far through each one you are.", M(DOWN, CENTER))
-    screen("book-now-playing", "An audiobook", "An audiobook shows its chapter. Press play, and it carries on from where you stopped.", M(DOWN, CENTER, PREVIEW), wait=1.4)
-    screen("authors", "Audiobooks by author", "Your audiobooks, grouped by author.", M(DOWN, DOWN, CENTER))
-    screen("books", "One author's books", "Each book shows its length and whether it is saved on the iPod to play offline.", M(DOWN, DOWN, CENTER, DOWN, DOWN, CENTER))
-    screen("book-page", "A book", "Play it, remove the download, jump to a chapter, or choose where it plays.", M(DOWN, DOWN, CENTER, DOWN, DOWN, CENTER, CENTER))
-    screen("chapters", "Chapters", "Every chapter, with the one you are in marked.", M(DOWN, DOWN, CENTER, DOWN, DOWN, CENTER, CENTER, DOWN, DOWN, CENTER))
+    # (book-now-playing is taken at the end: it really plays the book for a moment, silently, and the Continue row is reset after)
+    screen("authors", "Audiobooks by author", "Your audiobooks, grouped by author.", M(DOWN, DOWN, CENTER, *([DOWN] * AUTHOR_DOWN)))
+    screen("books", "One author's books", "Each book shows its length and whether it is saved on the iPod to play offline.", M(DOWN, DOWN, CENTER, *([DOWN] * AUTHOR_DOWN), CENTER, *([DOWN] * BOOK_DOWN)))
+    screen("book-page", "A book", "Play it, remove the download, jump to a chapter, or choose where it plays.", M(DOWN, DOWN, CENTER, *([DOWN] * AUTHOR_DOWN), CENTER, *([DOWN] * BOOK_DOWN), CENTER))
+    screen("chapters", "Chapters", "Every chapter, with the one you are in marked.", M(DOWN, DOWN, CENTER, *([DOWN] * AUTHOR_DOWN), CENTER, *([DOWN] * BOOK_DOWN), CENTER, *([DOWN] * CHAPTERS_DOWN), CENTER))
     # ---- music
     screen("music", "Music", "Shuffle everything, search, favourites, new songs, artists and more.", M(DOWN, DOWN, DOWN, CENTER))
     screen("music-more", "More ways into your music", "Artists, genres, albums and playlists.", M(DOWN, DOWN, DOWN, CENTER, *([DOWN] * 8)))
     screen("favourites", "Favourites", "Hold the middle button on a song to add it here. Hold it again to take it off.", M(DOWN, DOWN, DOWN, CENTER, DOWN, DOWN, CENTER))
     screen("new-songs", "New songs", "Songs added in the last month, newest first.", M(DOWN, DOWN, DOWN, CENTER, DOWN, DOWN, DOWN, CENTER))
-    screen("artists", "Artists", "Every artist in your music.", M(DOWN, DOWN, DOWN, CENTER, DOWN, DOWN, DOWN, DOWN, CENTER))
+    screen("artists", "Artists", "Every artist in your music.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN)))
+    screen("artist", "An artist", "Artist, album, song: the albums are a row of covers, with All songs first. Turn the wheel to move along them.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER), wait=1.4)
+    screen("artist-songs", "All of an artist's songs", "Choose All songs, then Shuffle all to hear everything by them in a surprise order.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER, CENTER))
+    screen("album-tracks", "An album", "Choose an album to see its songs, and Shuffle all to mix just that album.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER, DOWN, CENTER))
     screen("search", "Search", "Spell a song, album or artist with the wheel; it looks on the iPod and in Apple Music.", M(DOWN, DOWN, DOWN, CENTER, DOWN, CENTER))
     # ---- speakers, settings, status, help
     screen("listen-on", "Listen on", "Move what you are listening to to any speaker in the house, and back, from where you stopped.", M(*([DOWN] * 5), CENTER))
     screen("settings", "Settings", "Wi-Fi, Bluetooth headphones, brightness, sleep timer, volume limit, wheel click and more.", M(*([DOWN] * 6), CENTER), boxes=[SSID_SUB])
-    screen("settings-more", "More settings", "Settings a grown-up protects with the code are marked.", M(*([DOWN] * 6), CENTER, *([DOWN] * 9)), boxes=[SSID_SUB])
+    screen("settings-more", "More settings", "Settings a grown-up protects with the code are marked.", M(*([DOWN] * 6), CENTER, *([DOWN] * 9)))
     screen("wifi", "Wi-Fi", "Pick a network and type its password with the wheel. Joining needs no code; forgetting one does.",
            M(*([DOWN] * 6), CENTER, CENTER), boxes=SSID_ROWS, wait=2.5)
     screen("bluetooth", "Bluetooth headphones", "Pair headphones and the sound moves to them.", M(*([DOWN] * 6), CENTER, DOWN, CENTER), wait=1.5)
@@ -248,21 +327,31 @@ def main():
         shot(raw, "help-video", "The Help video", "It plays chapter after chapter; the wheel or Next and Previous jump between them, the middle button pauses.", wait=0.6)
         key(BACK, gap=0.8)
     # ---- the lock screens
+    pause_if_playing()
     if want("hold"):
         reset(raw, ref); key(HOLD, gap=1.0)
         shot(raw, "hold", "On hold", "Like the hold switch on an iPod: press any button three times quickly to wake it up.", [CONTACT])
         ensure_awake()
     if want("bedtime-dark"):
-        reset(raw, ref); key(DARK, gap=1.0)
+        pause_if_playing(); reset(raw, ref); key(DARK, gap=1.0)
         shot(raw, "bedtime-dark", "Bedtime colours", "In the bedtime window the screen goes dark, like Night Shift.")
         key(DARK, gap=0.8)
     if want("bedtime-lock"):
         reset(raw, ref); key(LOCKPREVIEW, gap=1.0)
-        shot(raw, "bedtime-lock", "Bedtime", "When tonight's listening is used up, it says goodnight. Only a grown-up's code (or Wi-Fi settings) works.", [CONTACT])
+        shot(raw, "bedtime-lock", "Bedtime", "When tonight's listening is used up, it says goodnight. Only a grown-up's code (or Wi-Fi settings) works.")
         key(LOCKPREVIEW, gap=0.8)
     # ---- voice search
     voice(raw, ref, want)
-    finish(raw, a, started_asleep, ref, before_state=before_state)
+    # ---- an audiobook playing (silently): the real Now Playing of a book; then Continue goes back to a song
+    if want("book-now-playing"):
+        reset(raw, ref)
+        key(*nav((DOWN, DOWN, CENTER)), *([DOWN] * AUTHOR_DOWN), CENTER, *([DOWN] * BOOK_DOWN), CENTER, gap=0.6)
+        key(CENTER, gap=0.6)                                     # Play (the first row): it opens Now Playing
+        shot(raw, "book-now-playing", "An audiobook", "An audiobook shows its chapter. Press play, and it carries on from where you stopped.", wait=2.5)
+        key(85, gap=0.6)                                         # pause
+        if only is None or "prepare" in only: prepare()
+    # prepare() made Continue a song on purpose: that is the state to leave (restoring would bring back the old Continue)
+    finish(raw, a, started_asleep, ref, before_state=None if only is None or "prepare" in only else before_state)
 
 
 def finish(raw, a, started_asleep, ref, leave=True, before_state=None):
@@ -270,6 +359,9 @@ def finish(raw, a, started_asleep, ref, leave=True, before_state=None):
     if leave:
         reset(raw, ref)
     if before_state: restore_state(before_state)
+    pause_if_playing()                           # whatever started during the run (silently) is stopped
+    key(SHOTMODE_OFF, gap=0.5)                   # back to normal: syncing and counting again
+    su("svc power stayon false")
     if started_asleep:
         key(HOLD, gap=0.8)
         su("input keyevent 26")
@@ -296,14 +388,14 @@ def voice(raw, ref, want):
     except (OSError, subprocess.CalledProcessError):
         print("  (no `say`/afconvert: skipping the voice results)"); clip = None
     if want("voice-listening"):
-        reset(raw, ref); key(DOWN, DOWN, gap=0.4)      # on Audiobooks: a row where holding the middle button listens
+        reset(raw, ref); key(*nav((DOWN, DOWN)), gap=0.4)      # on Audiobooks: a row where holding the middle button listens
         # a real hold of the centre key (mtk-kpd scancode 232), as a finger would
         su("sendevent /dev/input/event0 1 232 1; sendevent /dev/input/event0 0 0 0")
         shot(raw, "voice-listening", "Listening", "Hold the middle button and say what you want. It pauses the music, and the wave moves as you speak.", wait=1.6)
         su("sendevent /dev/input/event0 1 232 0; sendevent /dev/input/event0 0 0 0")
         time.sleep(2.5)
     if clip and any(want(n) for n in names[1:]):
-        reset(raw, ref); key(DOWN, DOWN, gap=0.4)
+        reset(raw, ref); key(*nav((DOWN, DOWN)), gap=0.4)
         key(VOICETEST, gap=0.1)
         shot(raw, "voice-thinking", "Working out what you said", "Let go and it works out the words, on the iPod itself or through Home Assistant.", wait=0.9)
         for _ in range(40):                              # until the results screen is up

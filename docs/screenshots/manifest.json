@@ -42,25 +42,169 @@
   "caption": "Each book shows its length and whether it is saved on the iPod to play offline."
  },
  {
-  "file": "30-bedtime-lock.png",
+  "file": "08-book-page.png",
+  "name": "book-page",
+  "title": "A book",
+  "caption": "Play it, remove the download, jump to a chapter, or choose where it plays."
+ },
+ {
+  "file": "09-chapters.png",
+  "name": "chapters",
+  "title": "Chapters",
+  "caption": "Every chapter, with the one you are in marked."
+ },
+ {
+  "file": "10-music.png",
+  "name": "music",
+  "title": "Music",
+  "caption": "Shuffle everything, search, favourites, new songs, artists and more."
+ },
+ {
+  "file": "11-music-more.png",
+  "name": "music-more",
+  "title": "More ways into your music",
+  "caption": "Artists, genres, albums and playlists."
+ },
+ {
+  "file": "12-favourites.png",
+  "name": "favourites",
+  "title": "Favourites",
+  "caption": "Hold the middle button on a song to add it here. Hold it again to take it off."
+ },
+ {
+  "file": "13-new-songs.png",
+  "name": "new-songs",
+  "title": "New songs",
+  "caption": "Songs added in the last month, newest first."
+ },
+ {
+  "file": "14-artists.png",
+  "name": "artists",
+  "title": "Artists",
+  "caption": "Every artist in your music."
+ },
+ {
+  "file": "15-artist.png",
+  "name": "artist",
+  "title": "An artist",
+  "caption": "Artist, album, song: the albums are a row of covers, with All songs first. Turn the wheel to move along them."
+ },
+ {
+  "file": "16-artist-songs.png",
+  "name": "artist-songs",
+  "title": "All of an artist's songs",
+  "caption": "Choose All songs, then Shuffle all to hear everything by them in a surprise order."
+ },
+ {
+  "file": "17-album-tracks.png",
+  "name": "album-tracks",
+  "title": "An album",
+  "caption": "Choose an album to see its songs, and Shuffle all to mix just that album."
+ },
+ {
+  "file": "18-search.png",
+  "name": "search",
+  "title": "Search",
+  "caption": "Spell a song, album or artist with the wheel; it looks on the iPod and in Apple Music."
+ },
+ {
+  "file": "19-voice-listening.png",
+  "name": "voice-listening",
+  "title": "Listening",
+  "caption": "Hold the middle button and say what you want. It pauses the music, and the wave moves as you speak."
+ },
+ {
+  "file": "20-voice-thinking.png",
+  "name": "voice-thinking",
+  "title": "Working out what you said",
+  "caption": "Let go and it works out the words, on the iPod itself or through Home Assistant."
+ },
+ {
+  "file": "21-voice-results.png",
+  "name": "voice-results",
+  "title": "What it found",
+  "caption": "Songs on the iPod come first; below them, songs it can stream if it is on Wi-Fi."
+ },
+ {
+  "file": "23-listen-on.png",
+  "name": "listen-on",
+  "title": "Listen on",
+  "caption": "Move what you are listening to to any speaker in the house, and back, from where you stopped."
+ },
+ {
+  "file": "24-settings.png",
+  "name": "settings",
+  "title": "Settings",
+  "caption": "Wi-Fi, Bluetooth headphones, brightness, sleep timer, volume limit, wheel click and more."
+ },
+ {
+  "file": "25-settings-more.png",
+  "name": "settings-more",
+  "title": "More settings",
+  "caption": "Settings a grown-up protects with the code are marked."
+ },
+ {
+  "file": "26-wifi.png",
+  "name": "wifi",
+  "title": "Wi-Fi",
+  "caption": "Pick a network and type its password with the wheel. Joining needs no code; forgetting one does."
+ },
+ {
+  "file": "27-bluetooth.png",
+  "name": "bluetooth",
+  "title": "Bluetooth headphones",
+  "caption": "Pair headphones and the sound moves to them."
+ },
+ {
+  "file": "28-status.png",
+  "name": "status",
+  "title": "Status",
+  "caption": "Whether it is connected, and what is still to sync."
+ },
+ {
+  "file": "29-help.png",
+  "name": "help",
+  "title": "Help",
+  "caption": "The last row of the menu: a video that explains the iPod, in chapters."
+ },
+ {
+  "file": "30-help-video.png",
+  "name": "help-video",
+  "title": "The Help video",
+  "caption": "It plays chapter after chapter; the wheel or Next and Previous jump between them, the middle button pauses."
+ },
+ {
+  "file": "31-hold.png",
+  "name": "hold",
+  "title": "On hold",
+  "caption": "Like the hold switch on an iPod: press any button three times quickly to wake it up."
+ },
+ {
+  "file": "32-bedtime-dark.png",
+  "name": "bedtime-dark",
+  "title": "Bedtime colours",
+  "caption": "In the bedtime window the screen goes dark, like Night Shift."
+ },
+ {
+  "file": "33-bedtime-lock.png",
   "name": "bedtime-lock",
   "title": "Bedtime",
   "caption": "When tonight's listening is used up, it says goodnight. Only a grown-up's code (or Wi-Fi settings) works."
  },
  {
-  "file": "31-ha-device-top.png",
+  "file": "34-ha-device-top.png",
   "name": "ha-device-top",
   "title": "The player in Home Assistant",
   "caption": "Its own device page: battery, whether bedtime is locked, minutes left, what it is playing and where, and a Find it button."
  },
  {
-  "file": "32-ha-device-config.png",
+  "file": "35-ha-device-config.png",
   "name": "ha-device-config",
   "title": "Every setting, in Home Assistant",
   "caption": "Bedtime window and allowance, click sound, names, Find My, hold time, the 'if found' contact and more. Change one and the player has it within a minute."
  },
  {
-  "file": "33-ha-device-config-more.png",
+  "file": "36-ha-device-config-more.png",
   "name": "ha-device-config-more",
   "title": "More settings",
   "caption": "Speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction."

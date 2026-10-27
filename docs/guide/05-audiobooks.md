@@ -16,7 +16,10 @@ title: Audiobooks
 ## On screen
 
 - ![Your audiobooks, grouped by author.](../screenshots/06-authors.png) <!-- shot:authors -->
+- ![Each book shows its length and whether it is saved on the iPod to play offline.](../screenshots/07-books.png) <!-- shot:books -->
 - ![Play it, remove the download, jump to a chapter, or choose where it plays.](../screenshots/08-book-page.png) <!-- shot:book-page -->
+- ![Every chapter, with the one you are in marked.](../screenshots/09-chapters.png) <!-- shot:chapters -->
+- ![An audiobook shows its chapter. Press play, and it carries on from where you stopped.](../screenshots/05-book-now-playing.png) <!-- shot:book-now-playing -->
 
 ## For grown-ups
 

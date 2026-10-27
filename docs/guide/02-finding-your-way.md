@@ -18,7 +18,7 @@ title: Finding your way around
 ## On screen
 
 - ![Continue where you stopped, your audiobooks, your music, speakers, settings, help.](../screenshots/01-menu.png) <!-- shot:menu -->
-- {{shot:lock-hold}}
+- ![Like the hold switch on an iPod: press any button three times quickly to wake it up.](../screenshots/31-hold.png) <!-- shot:hold -->
 
 ## For grown-ups
 

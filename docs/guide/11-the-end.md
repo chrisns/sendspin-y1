@@ -15,7 +15,8 @@ title: That is everything
 
 ## On screen
 
-- ![Continue where you stopped, your audiobooks, your music, speakers, settings, help.](../screenshots/01-menu.png) <!-- shot:menu -->
+- ![Scroll down for Listen on, Settings, Status and Help.](../screenshots/02-menu-more.png) <!-- shot:menu-more -->
+- ![The last row of the menu: a video that explains the iPod, in chapters.](../screenshots/29-help.png) <!-- shot:help -->
 
 ## For grown-ups
 

@@ -25,26 +25,28 @@ If you leave the iPod alone for a minute, the buttons go to sleep so nothing hap
 
 Choose Music to find your songs. You can look by artist, by album or by kind of music, or choose New songs to see what has just arrived.
 
-Choose Shuffle all and the iPod plays everything in a surprise order.
+Pick an artist, and you will see a row of their albums. Pick an album to see its songs. Choose All songs to see everything by that artist.
+
+You can shuffle too. Shuffle all plays everything in a surprise order, and on an artist or an album it mixes up just theirs.
 
 While a song plays, the words scroll along in time, if the song has them.
 
 
-## 4. Favourites  (1:22)
+## 4. Favourites  (1:39)
 
 When you hear a song you love, hold down the middle button on it. A little heart appears.
 
 Your hearts all live together in Favourites, at the top of Music. Hold the middle button again to take a heart away.
 
 
-## 5. Audiobooks  (1:42)
+## 5. Audiobooks  (1:59)
 
 Your audiobooks are in Audiobooks. Choose one to start listening.
 
 The iPod remembers where you stopped, even if you switch it off, and it will carry on from the same place. If a book has chapters, you can choose one from the Chapters list.
 
 
-## 6. Searching  (2:03)
+## 6. Searching  (2:20)
 
 To find something new, choose Search. Turn the wheel to pick each letter.
 
@@ -53,39 +55,39 @@ Or do it the easy way. Hold the middle button anywhere except on a song, and say
 Songs already on your iPod come first. Then, if you have Wi-Fi, you will see more songs to stream. Choose one to play it, or add it to your library so it stays on your iPod for ever.
 
 
-## 7. Listening on speakers and headphones  (2:40)
+## 7. Listening on speakers and headphones  (2:57)
 
 Choose Listen on to play your music on a speaker in the house, like the one in your room. It carries on from the same place.
 
 For headphones, go to Settings and choose Bluetooth. Pick your headphones and they connect. Turn the volume with the wheel or the buttons on the headphones.
 
 
-## 8. Bedtime  (3:04)
+## 8. Bedtime  (3:21)
 
 Every night there is a bedtime window, and a little time to listen. When your time is used up, the iPod fades out and says goodnight.
 
 That is not a punishment. It is to help you sleep. If a grown-up says it is fine, they can unlock it for a while with their special code.
 
 
-## 9. Finding your iPod  (3:30)
+## 9. Finding your iPod  (3:47)
 
 If you ever lose your iPod, a grown-up can make it ring from their phone, loud, for a whole minute. Press any button to stop it.
 
 The lock screen also shows who to call, so anyone who finds it can get it back to you.
 
 
-## 10. Settings  (3:51)
+## 10. Settings  (4:08)
 
 In Settings you can join Wi-Fi, change how bright the screen is, and choose how the wheel clicks.
 
 Some settings are for grown-ups, and ask for the code. Joining Wi-Fi is fine for anyone, but taking a network away needs a grown-up.
 
 
-## 11. That is everything  (4:11)
+## 11. That is everything  (4:28)
 
 That is everything! Your music, your books, your favourites, and your voice.
 
 You can watch any part again from the Help list. Now go and enjoy your iPod.
 
 
-Total about 4:26.
+Total about 4:43.

@@ -17,10 +17,10 @@ title: Searching
 
 ## On screen
 
-- {{shot:search-entry}}
-- {{shot:voice-listening}}
-- {{shot:voice-results}}
-- {{shot:search-result}}
+- ![Spell a song, album or artist with the wheel; it looks on the iPod and in Apple Music.](../screenshots/18-search.png) <!-- shot:search -->
+- ![Hold the middle button and say what you want. It pauses the music, and the wave moves as you speak.](../screenshots/19-voice-listening.png) <!-- shot:voice-listening -->
+- ![Let go and it works out the words, on the iPod itself or through Home Assistant.](../screenshots/20-voice-thinking.png) <!-- shot:voice-thinking -->
+- ![Songs on the iPod come first; below them, songs it can stream if it is on Wi-Fi.](../screenshots/21-voice-results.png) <!-- shot:voice-results -->
 
 ## For grown-ups
 

@@ -15,7 +15,8 @@ title: Finding your iPod
 
 ## On screen
 
-- ![Its own device page: battery, whether bedtime is locked, minutes left, what it is playing and where, and a Find it button.](../screenshots/31-ha-device-top.png) <!-- shot:ha-device-top -->
+- ![Its own device page: battery, whether bedtime is locked, minutes left, what it is playing and where, and a Find it button.](../screenshots/34-ha-device-top.png) <!-- shot:ha-device-top -->
+- ![Like the hold switch on an iPod: press any button three times quickly to wake it up.](../screenshots/31-hold.png) <!-- shot:hold -->
 
 ## For grown-ups
 
