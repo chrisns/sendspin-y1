@@ -189,8 +189,9 @@ public final class HaClient {
     private Map<String, Object> open(String reply) throws IOException {
         Object o = reply.length() == 0 ? null : Json.parse(reply);
         if (!(o instanceof Map) || ((Map<String, Object>) o).get("n") == null) {
-            removed = true;                     // Home Assistant answers an unknown webhook with an empty 200
-            throw new IOException("not paired in Home Assistant: pair it again");
+            // Home Assistant answers an unknown webhook with an empty 200: while it is starting up (or the integration is
+            // reloading) that is only a moment, so it must not stick; try again on the next sync
+            throw new IOException("Home Assistant is not answering for this player (starting up, or not paired?)");
         }
         Map<String, Object> m = (Map<String, Object>) o;
         try {

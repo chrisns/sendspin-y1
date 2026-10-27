@@ -140,6 +140,7 @@ public final class UiView extends View {
                 r.add(nav(new Row("Status", eng.online ? "Connected" : "Offline", new Runnable() { public void run() { push(status()); } })));
                 if (solarInstalled())
                     r.add(new Row("Open Solar", "radio, settings and other apps", new Runnable() { public void run() { openSolar(); } }));
+                r.add(nav(new Row("Help", Help.available() ? "how to use your iPod" : "not on this iPod yet", new Runnable() { public void run() { push(helpScreen()); } })));
                 return r;
             }
         };
@@ -577,6 +578,30 @@ public final class UiView extends View {
         return steps[0];
     }
 
+    /** The Help video's chapters: pick where to start; it carries on through the rest. */
+    private Screen helpScreen() {
+        return new Screen() {
+            { title = "Help"; }
+            List<Row> rows() {
+                List<Row> r = new ArrayList<Row>();
+                if (!Help.available()) { r.add(emptyRow("The Help video isn\u2019t on this iPod yet")); return r; }
+                List<Help.Chapter> cs = Help.chapters();
+                for (int i = 0; i < cs.size(); i++) {
+                    final int at = i;
+                    r.add(new Row(cs.get(i).title, cs.size() > 1 ? "chapter " + (i + 1) + " of " + cs.size() : null, new Runnable() { public void run() { playHelp(at, false); } }));
+                }
+                return r;
+            }
+        };
+    }
+
+    private void playHelp(int chapter, boolean loud) {
+        android.content.Intent i = new android.content.Intent(getContext(), HelpActivity.class);
+        i.putExtra("chapter", chapter);
+        i.putExtra("loud", loud);
+        getContext().startActivity(i);
+    }
+
     private Screen settings() {
         return new Screen() {
             { title = "Settings"; }
@@ -588,6 +613,11 @@ public final class UiView extends View {
                     new Runnable() { public void run() { sys.scan(); push(wifiScreen()); } })));
                 r.add(nav(new Row("Bluetooth headphones", btSummary(), new Runnable() { public void run() { sys.bindA2dp(); push(btScreen()); } })));
                 final int br = sys.brightnessPercent();
+                if (Help.available())
+                    r.add(new Row("Armed for gifting: " + (eng.giftArmed() ? "yes" : "no"),
+                        eng.giftArmed() ? "the first unlock plays the Help video; select to cancel" : "locks it; the first unlock plays the Help video, loud", grownUp(new Runnable() { public void run() {
+                        boolean on = !eng.giftArmed(); eng.setGiftArmed(on);
+                        eng.notice(on ? "Armed: three taps will start the Help video" : "Not armed"); } })));
                 r.add(new Row("Find My beacon: " + (eng.findMyEnabled() ? eng.beacon.status : "off"), "passing iPhones report where it is", grownUp(new Runnable() { public void run() {
                     eng.setFindMyEnabled(!eng.findMyEnabled()); } })));
                 r.add(new Row("Brightness: " + br + "%", "select to change", new Runnable() { public void run() {
@@ -1011,6 +1041,10 @@ public final class UiView extends View {
         holdSwallowUp = code;
         int left = eng.hold.press(code, now);
         if (left == 0) clunk(); else tick();
+        if (left == 0 && eng.giftArmed() && Help.available()) {     // a gifted iPod: the first thing it does is explain itself
+            eng.setGiftArmed(false);
+            playHelp(0, true);
+        }
         return true;
     }
 
