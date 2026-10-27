@@ -45,3 +45,4 @@ java/android/native/stt/zigbin/
 java/android/native/stt/*.o
 deploy/help/out/
 provision/y1.json
+dist/
