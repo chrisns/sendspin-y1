@@ -20,7 +20,7 @@ public final class PlayService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable watchdog = new Runnable() {
         public void run() {
-            if (!MainActivity.alive) {
+            if (!MainActivity.alive && !HelpActivity.open) {          // (not while the gift video is playing)
                 Intent s = new Intent(PlayService.this, MainActivity.class);
                 s.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 try { startActivity(s); } catch (RuntimeException ignored) { }
@@ -33,6 +33,7 @@ public final class PlayService extends Service {
     /** Waking the iPod always lands in the player, even if Solar was left in front when it went to sleep. */
     private final BroadcastReceiver screenOn = new BroadcastReceiver() {
         public void onReceive(Context c, Intent i) {
+            if (HelpActivity.open) return;                          // the Help video is on screen: do not cover it
             Intent s = new Intent(c, MainActivity.class);
             s.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             try { c.startActivity(s); } catch (RuntimeException ignored) { }

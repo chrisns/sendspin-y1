@@ -2287,6 +2287,9 @@ public final class Engine {
         setGiftArmed(true);
     }
 
+    /** Test hook (UiView 987): armed as if the button had been pressed, but without switching off, so a reboot can be timed. */
+    public void testArm() { store.put("giftArmed", Long.valueOf(1)); log("gift: armed for a test (no power-off)"); }
+
     /** BootReceiver: a real power-on while armed (not a restart of the app): remember to play the video once it is up. */
     public void giftBooted() { if (giftArmed()) store.put("giftBoot", Long.valueOf(1)); }
 

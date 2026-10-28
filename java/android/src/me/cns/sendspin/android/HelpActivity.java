@@ -2,6 +2,7 @@ package me.cns.sendspin.android;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -32,7 +33,8 @@ public final class HelpActivity extends Activity {
     private AudioManager audio;
     private int volumeBefore = -1, shown = -1;
     private long labelUntil, pausedAt;
-    private int tries;
+    private int tries, relaunches;
+    private boolean leftByUser;
     private boolean pausedMusic, cleaned;
     private static final long PAUSED_MAX_MS = 120000;       // a paused video nobody is watching does not hold the screen on
 
@@ -129,7 +131,7 @@ public final class HelpActivity extends Activity {
         if (e.getRepeatCount() > 0) return true;
         int now = video.getCurrentPosition(), cur = chapterAt(now);
         switch (code) {
-            case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_MENU: Engine.get(this).log("help: left with " + code); finish(); return true;
+            case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_MENU: leftByUser = true; Engine.get(this).log("help: left with " + code); finish(); return true;
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_HEADSETHOOK:
                 if (video.isPlaying()) video.pause(); else video.start();
@@ -148,7 +150,16 @@ public final class HelpActivity extends Activity {
     protected void onPause() {
         Engine.get(this).log("help: paused, finishing=" + isFinishing() + " at " + video.getCurrentPosition() + " ms");
         cleanup();                                          // asleep or covered: the limit and the idle clock apply again
-        if (!isFinishing()) finish();
+        if (!isFinishing()) {
+            // the gift video, covered by something starting up after power-on (not the user leaving): bring it back, a few times
+            if (getIntent().getBooleanExtra("gift", false) && !leftByUser && relaunches < 4 && android.os.SystemClock.elapsedRealtime() < 5 * 60000L) {
+                relaunches++;
+                Engine.get(this).log("help: covered at boot, bringing it back (" + relaunches + ")");
+                handler.postDelayed(new Runnable() { public void run() { try { startActivity(new Intent(HelpActivity.this, HelpActivity.class).putExtras(getIntent()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (RuntimeException ignored) { } } }, 500);
+                return;
+            }
+            finish();
+        }
         super.onPause();
     }
 
