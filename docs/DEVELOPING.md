@@ -53,6 +53,8 @@ script sets it back.
 
 ## Screenshots and the guide
 
+![The artist view, one of the screens the capture script walks to](screenshots/15-artist.png)
+
 `docs/screenshots/capture.py` takes every screenshot, silently, and `docs/guide/build.py` links them into the chapters and
 writes `SCRIPT.md`. The repo skill `.claude/skills/y1-docs` describes the whole routine. Read its safety notes first:
 the capture plays music (at volume 0), refuses to run unless every output is at 0, and a wrong row count on a book page can

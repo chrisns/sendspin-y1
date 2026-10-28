@@ -53,6 +53,10 @@ the config map (nginx does not reload by itself).
 
 ## 4. The player's connection
 
+Once connected, the Status screen shows it, and how much music has arrived:
+
+![Status: connected to Music Assistant, 1396 of 1396 songs on the iPod](screenshots/28-status.png)
+
 `python3 provision/y1.py provision` asks for the Music Assistant address, the child's token and the file-server prefix
 and sets them in the app; or `MA_HOST=... deploy/deploy_y1.sh` with `deploy/secrets/ma_token` and `deploy/secrets/gw_prefix`.
 Ports: Music Assistant API 8095, Sendspin 8927, file server 18099. Audiobooks come from MA's audiobook library, which

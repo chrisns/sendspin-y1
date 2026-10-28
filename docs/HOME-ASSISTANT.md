@@ -22,6 +22,8 @@ key for a given player key.
 
 ## What the device page has
 
+![The Y1 Player device page in Home Assistant: sensors, the Find it button and bedtime minutes](screenshots/34-ha-device-top.png)
+
 | Kind | Entities |
 |---|---|
 | Sensors | Battery, Now playing (with artist), Listen on, Bedtime minutes left, Find My beacon status, Wi-Fi network, Last seen, Last GPS fix, Bedtime unlocked until |
@@ -34,6 +36,10 @@ key for a given player key.
 | Choice settings | Hold after, Unlock speed, Wheel click, Click loudness |
 | Switches | Wheel reversed, Find My beacon, Speaker always on, Keep everything offline, Voice on the iPod only, **Armed for gifting** |
 | Event | `y1_player_unlocked` when the grown-up code is used (also notifies, see options) |
+
+![The device's configuration: bedtime window and allowance, click, names, Find My, hold, home Wi-Fi, the contact shown if it is found](screenshots/35-ha-device-config.png)
+
+![More settings: speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction](screenshots/36-ha-device-config-more.png)
 
 Settings work both ways: change one here or on the player and the other has it within about 30 seconds; the newest change
 wins. Reported sensors become unavailable if the player has not checked in for 10 minutes; settings stay editable.
@@ -49,12 +55,18 @@ wins. Reported sensors become unavailable if the player has not checked in for 1
 
 ## Bedtime
 
+![The bedtime screen: it says goodnight and offers only the grown-up code and Wi-Fi](screenshots/33-bedtime-lock.png)
+
 A listening allowance inside a night window, counted on the player (also offline) and added to the shared counter with a
 sequence number, so a resent message is never counted twice. When it is used up the player fades out and locks (a
 night-sky screen that takes only the grown-up code and Wi-Fi). The code (TOTP, 5 digits, each used once, accepted up to
 90 s late) lifts the limit for 8 hours, tells you, and opens the protected settings for 10 minutes.
 
 ## Gifting
+
+The *Armed for gifting* row is in the player's Settings too (it asks for the grown-up code):
+
+![The player's Settings: Wi-Fi, Bluetooth headphones, Armed for gifting, Find My beacon, brightness](screenshots/24-settings.png)
 
 *Armed for gifting* locks the player so the first three-tap unlock plays the Help video at full volume from chapter 1,
 then switches itself off. It will not arm without a Help video on the player, and arming from the player's own Settings

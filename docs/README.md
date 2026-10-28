@@ -8,4 +8,5 @@
 | [SERVER.md](SERVER.md) | Music Assistant, music-sync, the file server |
 | [HOME-ASSISTANT.md](HOME-ASSISTANT.md) | The integration: entities, options, bedtime, gifting, security model |
 | [DEVELOPING.md](DEVELOPING.md) | Layout, build, tests, test hooks, screenshots |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Symptom, cause, fix: on the player, in Home Assistant, flashing, the server |
 | [NOTES.md](NOTES.md) | The build log and the traps found on the way |
