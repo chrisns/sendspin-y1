@@ -8,6 +8,28 @@ It plays from its own storage with no network, streams anything else through Mus
 charge: a shared bedtime listening budget, clean versions of explicit songs, a grown-up code, and a "find it" button in
 Home Assistant.
 
+## What it looks like
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/01-menu.png" width="300"><br><sub>The main menu: carry on where you stopped</sub></td>
+<td align="center"><img src="docs/screenshots/03-now-playing.png" width="300"><br><sub>Now Playing, with synced lyrics</sub></td>
+<td align="center"><img src="docs/screenshots/15-artist.png" width="300"><br><sub>Artist, album, song: a row of covers</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/05-book-now-playing.png" width="300"><br><sub>An audiobook, by chapter</sub></td>
+<td align="center"><img src="docs/screenshots/19-voice-listening.png" width="300"><br><sub>Hold the middle button and speak</sub></td>
+<td align="center"><img src="docs/screenshots/21-voice-results.png" width="300"><br><sub>Songs on the iPod first, then what can be streamed</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/12-favourites.png" width="300"><br><sub>Favourites: hold the middle button for a heart</sub></td>
+<td align="center"><img src="docs/screenshots/33-bedtime-lock.png" width="300"><br><sub>Bedtime: it says goodnight when the listening time is used up</sub></td>
+<td align="center"><img src="docs/screenshots/34-ha-device-top.png" width="300"><br><sub>Its device page in Home Assistant</sub></td>
+</tr>
+</table>
+
+More in the [user guide](docs/guide/README.md), which is also the script of the Help video on the player.
+
 ## What it does
 
 - **Click-wheel player:** the app is the home screen, drawn for the Y1's wheel: music by artist, album and genre, New
