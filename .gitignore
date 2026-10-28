@@ -52,3 +52,6 @@ dist/
 java/android/libs/conscrypt-classes.jar
 java/android/libs/armeabi-v7a/
 java/android/libs/.version
+
+# the personal birthday film (private: not for the public repo)
+deploy/help/*freya*.py
