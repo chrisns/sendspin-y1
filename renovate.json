@@ -1,0 +1,58 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "labels": ["dependencies"],
+  "kubernetes": { "fileMatch": ["^deploy/[^/]+\\.ya?ml$"] },
+  "packageRules": [
+    {
+      "description": "The Music Assistant server version is shared by the music-sync image and your own Music Assistant: review before merging, never automerge",
+      "matchPackageNames": ["ghcr.io/music-assistant/server"],
+      "groupName": "music-assistant server",
+      "automerge": false
+    },
+    {
+      "description": "Our own image: Renovate bumps the tag in the manifest to the digest it published",
+      "matchPackageNames": ["ghcr.io/chrisns/sendspin-y1-music-sync"],
+      "pinDigests": true
+    },
+    {
+      "description": "whisper.cpp is also pinned by commit in stt/build.sh (VCOMMIT): update both together and rerun the speech test",
+      "matchPackageNames": ["ggml-org/whisper.cpp"],
+      "automerge": false
+    },
+    {
+      "description": "The flashing tool's Python pins: a bump needs a real flash test, never automerge",
+      "matchDepNames": ["/^pip:/"],
+      "automerge": false,
+      "groupName": "flashing tool pip pins"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "whisper.cpp release tag in the speech engine build",
+      "customType": "regex",
+      "fileMatch": ["^java/android/native/stt/build\\.sh$"],
+      "matchStrings": ["\\nV=(?<currentValue>v[0-9.]+)\\n"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "ggml-org/whisper.cpp"
+    },
+    {
+      "description": "The Python packages pinned for the flashing tool (PIP list in provision/y1.py)",
+      "customType": "regex",
+      "fileMatch": ["^provision/y1\\.py$"],
+      "matchStrings": ["\"(?<depName>[A-Za-z0-9._-]+)==(?<currentValue>[0-9][A-Za-z0-9.]*)\""],
+      "datasourceTemplate": "pypi",
+      "depNameTemplate": "pip:{{depName}}",
+      "packageNameTemplate": "{{depName}}"
+    },
+    {
+      "description": "The Solar ROM release the provisioning tool downloads (its sha256 must be updated with it)",
+      "customType": "regex",
+      "fileMatch": ["^provision/y1\\.py$"],
+      "matchStrings": ["SOLAR_TAG = \"(?<currentValue>[0-9-]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "thesolarproject/solar",
+      "versioningTemplate": "loose"
+    }
+  ]
+}

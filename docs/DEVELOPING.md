@@ -23,7 +23,14 @@ adb -d install -r java/build/sendspin-y1.apk
 ```
 
 CI (`.github/workflows/build.yml`) builds the bundle, runs the tests and, on a `v*` tag, releases it.
-`validate.yml` runs hassfest and the HACS check.
+`validate.yml` runs hassfest and the HACS check. `image.yml` builds and publishes the music-sync container image to GHCR
+(from `main` and tags; pull requests only build it).
+
+**Keeping dependencies patched:** `renovate.json` (install the [Renovate GitHub app](https://github.com/apps/renovate) on
+the repository) tracks the GitHub Actions (pinned by commit), the Music Assistant and nginx image tags in `deploy/*.yaml`, our
+own image's digest, the whisper.cpp tag, the pinned flashing-tool Python packages and the Solar ROM release. Some bumps
+need a matching change by hand: whisper.cpp's commit (`VCOMMIT` in `stt/build.sh`), the Solar ROM's sha256, and the
+zig version in `build.yml`, which Renovate does not track. The bundled Conscrypt jar and library are updated by hand.
 
 ## Driving the app from a computer
 

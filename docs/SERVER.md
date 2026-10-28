@@ -46,12 +46,14 @@ Sendspin players (`WORKERS`), captured and encoded, with cover art and lyrics (L
 the player syncs from. It adopts clean versions of explicit songs, drops songs removed from the library, and learns how many
 parallel streams Apple allows. Settings are environment variables: `LIBRARY_PROVIDER` (the instance id above),
 `PLAY_TOKEN_FILE`, `OWNER_NAME`, `DEVICE_NAME` (the names shown on the player), `WORKERS`, `BITRATE`, `INTERVAL`, `TZ`.
-Create the config map from the folder, put the secret in place from files (not the command line), `kubectl apply`:
+It runs from its own image, `ghcr.io/chrisns/sendspin-y1-music-sync` (`deploy/music-sync/Dockerfile`: the Music Assistant
+server image plus the two scripts), built and published by `.github/workflows/image.yml`. The first time, make the package
+public on GitHub (*Packages > sendspin-y1-music-sync > Package settings > Change visibility*) or give the cluster a pull
+secret; GitHub does not allow that step through the API. Put the secret in place from files (not the command line), `kubectl apply`:
 
 ```
 mkdir -p deploy/secrets && chmod 700 deploy/secrets        # gitignored: keep tokens here
 # save the admin token as deploy/secrets/ma_admin_token and the child's as deploy/secrets/ma_token (chmod 600)
-kubectl -n music-assistant create configmap music-sync --from-file=deploy/music-sync
 kubectl -n music-assistant create secret generic music-sync-token \
   --from-file=token=deploy/secrets/ma_admin_token --from-file=play_token=deploy/secrets/ma_token
 kubectl apply -f deploy/music-sync.yaml
