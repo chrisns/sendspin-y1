@@ -609,7 +609,7 @@ public final class UiView extends View {
     }
 
     /** After a power-on while armed (MainActivity, a few seconds after it starts, once the media system is up). */
-    public void playHelpAfterBoot() { playHelp(0, true, true); }
+    public void playHelpAfterBoot() { HelpActivity.comingUntil = System.currentTimeMillis() + 15000; playHelp(0, true, true); }
 
     private void playHelp(int chapter, boolean loud) { playHelp(chapter, loud, false); }
 
@@ -1079,7 +1079,7 @@ public final class UiView extends View {
 
     public boolean onKey(int code, KeyEvent ev) {
         lastKey = KeyEvent.keyCodeToString(code);
-        if (code == 987) { eng.testArm(); return true; }          // test hook: arm without switching off
+        if (code == 991) { eng.testArm(); return true; }          // test hook: arm without switching off (>= 990 so the button hold does not swallow it)
         if (code == 989 || code == 988) { eng.shotMode = code == 989; top().refresh(); invalidate(); return true; }   // test hooks: screenshot mode on (989) / off (988), see Engine.shotMode
         if (code == 990) {      // test hook only: recognise /sdcard/voice-test.pcm (16 kHz mono 16-bit) as if spoken
             try { recognise(Net.readBytes(new java.io.File("/sdcard/voice-test.pcm"))); } catch (Exception e) { eng.notice("no test audio"); }

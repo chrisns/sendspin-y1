@@ -46,7 +46,8 @@ public final class MainActivity extends Activity {
 
     /** Switched on while armed for gifting: the boot flag arrives a little after the app starts, so look for it for two minutes. */
     private void giftWatch(final int n) {
-        if (n > 240) return;
+        if (n > 240) { eng.log("gift watch: gave up after 2 minutes"); return; }
+        if (n == 0 || n % 40 == 0) eng.log("gift watch " + n + ": armed=" + eng.giftArmed() + " help=" + Help.available() + " uptime=" + android.os.SystemClock.elapsedRealtime() / 1000 + " s");
         ui.postDelayed(new Runnable() { public void run() {
             if (eng.takeGiftBoot()) ui.postDelayed(new Runnable() { public void run() { ui.playHelpAfterBoot(); } }, 700);   // HelpActivity retries if the media system is not ready yet
             else giftWatch(n + 1);

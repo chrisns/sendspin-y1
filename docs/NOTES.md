@@ -296,3 +296,14 @@ without a highlighted line.
   longer waits for the boot-completed broadcast: an armed player within 5 minutes of power-on (uptime) plays it, polling every
   0.5 s, and the video starts 0.7 s later; `HelpActivity` retries up to 5 times if the media system is not ready. The log says
   `gift: playing, N s after power-on`, which is the number to look at (Android's own start-up is most of it).
+- Gift video, what actually broke it at power-on (all found from the boot log, `adb logcat -d -v time`): (1) the app is the home
+  screen, so it starts before the boot-completed broadcast; (2) `PlayService` brought the player to the front (screen-on
+  broadcast, watchdog) over the video, and because `MainActivity` is `singleTask` Android then also *finished* the video: the
+  video is now marked as coming (`HelpActivity.comingUntil`) so nothing covers it, and it relaunches itself (up to 4 times, within
+  5 minutes of power-on) if something still does; (3) the card is not mounted yet, hence the app's own copy. Timeline of a good boot:
+  decision 19 s after power-on, video launched 1.5 s later, prepared 0.9 s after that. Once, with the same build, preparing took
+  10 s (the media system busy early in boot): `HelpActivity` retries but cannot speed that up.
+- Testing it: test hook 991 arms without switching off, but arming while the iPod has been up under 5 minutes plays at once. To
+  test a boot cleanly, stop the app, set `giftArmed` to 1 in `files/state.json` as root, and reboot; then read the log for
+  `gift watch`, `gift: playing`, `help: prepared`.
+

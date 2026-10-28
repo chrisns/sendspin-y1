@@ -25,6 +25,9 @@ import java.util.List;
 public final class HelpActivity extends Activity {
     /** True while it is open: the volume limit stands aside and bedtime does not count it as idle. */
     public static volatile boolean open;
+    /** Until when (ms since 1970) the gift video is about to be shown: nothing else may take the front meanwhile. */
+    public static volatile long comingUntil;
+    private boolean completed;
 
     private VideoView video;
     private TextView label;
@@ -80,7 +83,7 @@ public final class HelpActivity extends Activity {
             }
         });
         video.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            public void onCompletion(MediaPlayer mp) { Engine.get(HelpActivity.this).log("help: video completed at " + mp.getCurrentPosition() + " ms"); finish(); }
+            public void onCompletion(MediaPlayer mp) { completed = true; Engine.get(HelpActivity.this).log("help: video completed at " + mp.getCurrentPosition() + " ms"); finish(); }
         });
         video.setOnErrorListener(new MediaPlayer.OnErrorListener() {
             public boolean onError(MediaPlayer mp, int what, int extra) {
@@ -150,14 +153,18 @@ public final class HelpActivity extends Activity {
     protected void onPause() {
         Engine.get(this).log("help: paused, finishing=" + isFinishing() + " at " + video.getCurrentPosition() + " ms");
         cleanup();                                          // asleep or covered: the limit and the idle clock apply again
-        if (!isFinishing()) {
-            // the gift video, covered by something starting up after power-on (not the user leaving): bring it back, a few times
-            if (getIntent().getBooleanExtra("gift", false) && !leftByUser && relaunches < 4 && android.os.SystemClock.elapsedRealtime() < 5 * 60000L) {
-                relaunches++;
-                Engine.get(this).log("help: covered at boot, bringing it back (" + relaunches + ")");
-                handler.postDelayed(new Runnable() { public void run() { try { startActivity(new Intent(HelpActivity.this, HelpActivity.class).putExtras(getIntent()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (RuntimeException ignored) { } } }, 500);
-                return;
-            }
+        final int again = getIntent().getIntExtra("again", 0);
+        // The gift video, covered by something starting up after power-on (not the user leaving, not done): bring it back, a few
+        // times. (Starting the player's own screen, a singleTask, also makes Android finish this one: so this applies even if finishing.)
+        if (getIntent().getBooleanExtra("gift", false) && !leftByUser && !completed && again < 4
+            && android.os.SystemClock.elapsedRealtime() < 5 * 60000L && video.getCurrentPosition() < 5000) {
+            Engine.get(this).log("help: covered at boot, bringing it back (" + (again + 1) + ")");
+            final Intent next = new Intent(this, HelpActivity.class).putExtras(getIntent()).putExtra("again", again + 1)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            final Context app = getApplicationContext();
+            comingUntil = System.currentTimeMillis() + 15000;
+            new Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() { public void run() { try { app.startActivity(next); } catch (RuntimeException ignored) { } } }, 700);
+        } else if (!isFinishing()) {
             finish();
         }
         super.onPause();
