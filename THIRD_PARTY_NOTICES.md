@@ -5,7 +5,7 @@ licences:
 
 | Part | Where | Licence |
 |---|---|---|
-| Conscrypt 2.5.3 (TLS for Android 4.2): `conscrypt-classes.jar` and `libconscrypt_jni.so`, both also inside the APK | `java/android/libs/` | Apache License 2.0, with its NOTICE (`CONSCRYPT-LICENSE.txt`) |
+| Conscrypt 2.5.3 (TLS for Android 4.2): `conscrypt-classes.jar` and `libconscrypt_jni.so`, fetched from Maven Central at build time (not committed) and inside the APK | `java/android/libs/` | Apache License 2.0, with its NOTICE (`CONSCRYPT-LICENSE.txt`) |
 | BoringSSL, statically linked into `libconscrypt_jni.so` | `java/android/libs/` | see `BORINGSSL-LICENSE.txt` (Apache 2.0 for current code; older files carry OpenSSL and ISC terms) |
 | whisper.cpp v1.7.6 and ggml (static in the `y1-stt` binary of release bundles; built by `java/android/native/stt/build.sh`) | `licenses/whisper.cpp-LICENSE.txt` | MIT, Copyright (c) 2023-2024 The ggml authors |
 | Whisper `tiny.en` model, `ggml-tiny.en-q5_1.bin` (downloaded by `stt/build.sh`, not stored in git; copied to the player) | `licenses/whisper-model-LICENSE.txt` | MIT, Copyright (c) 2022 OpenAI |

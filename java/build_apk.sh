@@ -9,7 +9,9 @@ JAR="$SDK/platforms/android-17/android.jar"
 rm -rf build && mkdir -p build/classes
 # core client (everything except the desktop harness) + android front end
 CORE=$(ls src/me/cns/sendspin/*.java | grep -v -e Main.java -e CryptoSelfTest.java)
-TLSJAR=android/libs/conscrypt-classes.jar   # Conscrypt 2.5.3 (Maven Central): TLS 1.2 GCM / 1.3 for Home Assistant
+CONSCRYPT=2.5.3     # TLS 1.2 GCM for Home Assistant; the last release for Android 4.2 (later ones need Android 5). Fetched from Maven Central.
+sh android/libs/fetch.sh "$CONSCRYPT"
+TLSJAR=android/libs/conscrypt-classes.jar
 javac --release 8 -Xlint:-options -cp "$JAR:$TLSJAR" -d build/classes $CORE android/src/me/cns/sendspin/android/*.java
 "$BT/d8" --min-api 17 --lib "$JAR" --output build $(find build/classes -name '*.class') "$TLSJAR"
 "$BT/aapt2" link -o build/base.apk --manifest android/AndroidManifest.xml -I "$JAR" \

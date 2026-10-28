@@ -47,3 +47,8 @@ java/android/native/stt/*.o
 deploy/help/out/
 provision/y1.json
 dist/
+
+# fetched by java/android/libs/fetch.sh
+java/android/libs/conscrypt-classes.jar
+java/android/libs/armeabi-v7a/
+java/android/libs/.version

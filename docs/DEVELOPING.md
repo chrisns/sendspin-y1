@@ -28,9 +28,15 @@ CI (`.github/workflows/build.yml`) builds the bundle, runs the tests and, on a `
 
 **Keeping dependencies patched:** `renovate.json` (install the [Renovate GitHub app](https://github.com/apps/renovate) on
 the repository) tracks the GitHub Actions (pinned by commit), the Music Assistant and nginx image tags in `deploy/*.yaml`, our
-own image's digest, the whisper.cpp tag, the pinned flashing-tool Python packages and the Solar ROM release. Some bumps
-need a matching change by hand: whisper.cpp's commit (`VCOMMIT` in `stt/build.sh`), the Solar ROM's sha256, and the
-zig version in `build.yml`, which Renovate does not track. The bundled Conscrypt jar and library are updated by hand.
+own image's digest, the whisper.cpp tag and commit (moved together), the zig version in `build.yml`, the pinned
+flashing-tool Python packages, the Solar ROM release and Conscrypt. When Renovate moves the Solar release,
+`.github/workflows/pin-hashes.yml` fills in its sha256 on the pull request (GitHub publishes it per asset). Nothing is
+merged automatically for whisper.cpp, Music Assistant, or the flashing tool's packages: each needs a test on a real unit.
+
+**Conscrypt is frozen at 2.5.3**, the last release that runs on Android 4.2 (2.6.0 and later need Android 5), so Renovate is told
+not to propose newer ones. It is fetched from Maven Central by `java/android/libs/fetch.sh` (pinned by sha256) instead of being
+committed. That makes it an end-of-line TLS library: it talks only to Home Assistant, Music Assistant and Nabu Casa, but
+any CVE fixed after 2.5.3 is not fixed here.
 
 ## Driving the app from a computer
 

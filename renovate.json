@@ -16,7 +16,12 @@
       "pinDigests": true
     },
     {
-      "description": "whisper.cpp is also pinned by commit in stt/build.sh (VCOMMIT): update both together and rerun the speech test",
+      "description": "Conscrypt 2.5.3 is the last release for Android 4.2 (2.6.0 and later need Android 5): never propose them",
+      "matchPackageNames": ["org.conscrypt:conscrypt-android"],
+      "allowedVersions": "<2.6.0"
+    },
+    {
+      "description": "whisper.cpp: Renovate moves the tag and its commit (VCOMMIT) together; a bump needs the speech test rerun, so no automerge",
       "matchPackageNames": ["ggml-org/whisper.cpp"],
       "automerge": false
     },
@@ -27,12 +32,35 @@
       "groupName": "flashing tool pip pins"
     }
   ],
+  "customDatasources": {
+    "zig": {
+      "defaultRegistryUrlTemplate": "https://ziglang.org/download/index.json",
+      "format": "json",
+      "transformTemplates": ["{\"releases\": $keys($)[$ != \"master\"].{\"version\": $}}"]
+    }
+  },
   "customManagers": [
+    {
+      "description": "zig, which builds the ARM helpers in CI (ziglang.org's release index)",
+      "customType": "regex",
+      "fileMatch": ["^\\.github/workflows/build\\.yml$"],
+      "matchStrings": ["version: (?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+) \\}"],
+      "datasourceTemplate": "custom.zig",
+      "depNameTemplate": "zig"
+    },
+    {
+      "description": "Conscrypt, fetched by java/android/libs/fetch.sh",
+      "customType": "regex",
+      "fileMatch": ["^java/build_apk\\.sh$"],
+      "matchStrings": ["\\nCONSCRYPT=(?<currentValue>[0-9.]+) "],
+      "datasourceTemplate": "maven",
+      "depNameTemplate": "org.conscrypt:conscrypt-android"
+    },
     {
       "description": "whisper.cpp release tag in the speech engine build",
       "customType": "regex",
       "fileMatch": ["^java/android/native/stt/build\\.sh$"],
-      "matchStrings": ["\\nV=(?<currentValue>v[0-9.]+)\\n"],
+      "matchStrings": ["\\nV=(?<currentValue>v[0-9.]+)\\nVCOMMIT=(?<currentDigest>[a-f0-9]{40})"],
       "datasourceTemplate": "github-tags",
       "depNameTemplate": "ggml-org/whisper.cpp"
     },

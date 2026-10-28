@@ -1,0 +1,30 @@
+name: pin hashes
+
+# When Renovate moves the Solar ROM release in provision/y1.py, fill in the matching sha256 (GitHub publishes it per asset).
+on:
+  pull_request:
+    paths: ['provision/y1.py']
+
+permissions:
+  contents: write
+
+jobs:
+  solar:
+    if: startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Set SOLAR_SHA256 from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/pin-solar-sha.py
+      - name: Commit it to the pull request
+        run: |
+          if ! git diff --quiet provision/y1.py; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Update the Solar ROM sha256 for the new release"
+            git push
+          fi
