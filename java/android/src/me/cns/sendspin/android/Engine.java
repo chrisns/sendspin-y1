@@ -198,6 +198,15 @@ public final class Engine {
 
     private boolean sdReady() { return dlDir() != legacyDir; }
 
+    /**
+     * The card is mounted and both the books and the music have been read: the player has everything to show (MainActivity's
+     * greeting waits for this). The music is read from the card, so it only appears once the card is up.
+     */
+    public boolean mediaReady() { return sdReady() && !books.isEmpty() && !musicLib.tracks().isEmpty(); }
+
+    /** The card is mounted and something has been read: good enough after a while (an iPod with no music, say). */
+    public boolean mediaReadyLoosely() { return sdReady() && (!books.isEmpty() || !musicLib.tracks().isEmpty()); }
+
     private File coverDir() { return sdReady() ? new File(dlDir(), ".covers") : oldCovers; }
 
     /** Media must not sit on the small internal partition: move any books, part files and covers to the SD card. */

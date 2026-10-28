@@ -10,12 +10,17 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
+import android.os.Handler;
 
 /** Hosts the hand-drawn UI. Intent extras (host, port, token, gw_prefix, gw_port) provision the app over adb. */
 public final class MainActivity extends Activity {
     /** True while an instance exists; the service relaunches the app when this goes false. */
     public static volatile boolean alive;
     private UiView ui;
+    private FrameLayout root;
+    private Greeting greet;
+    private final Handler greetHandler = new Handler();
     private Engine eng;
 
     @Override
@@ -28,13 +33,17 @@ public final class MainActivity extends Activity {
         eng = Engine.get(this);
         provision(getIntent());
         ui = new UiView(this, eng);
-        setContentView(ui);
+        root = new FrameLayout(this);
+        root.addView(ui, new FrameLayout.LayoutParams(-1, -1));
+        setContentView(root);
+        if (android.os.SystemClock.elapsedRealtime() < 3 * 60000L) showGreeting(45000);      // just switched on: say hello while the media loads
         giftWatch(0);
         // Test hook: `su -c am broadcast -a me.cns.ab.KEY --ei code N` presses a key inside the app. Guarded by a
         // signature permission, so only root (adb) can use it.
         registerReceiver(new BroadcastReceiver() {
             public void onReceive(Context c, Intent i) {
                 final int code = i.getIntExtra("code", 0);
+                if (code == 985) { runOnUiThread(new Runnable() { public void run() { showGreeting(8000); } }); return; }     // test: show the greeting for 8 s
                 ui.post(new Runnable() { public void run() { if (!ui.holdKey(code, null, true)) ui.onKey(code, null); } });
             }
         }, new IntentFilter("me.cns.ab.KEY"), "me.cns.ab.permission.DEBUG", null);
@@ -42,6 +51,24 @@ public final class MainActivity extends Activity {
         registerReceiver(new BroadcastReceiver() {
             public void onReceive(Context c, Intent i) { eng.reloadBeacon(); }
         }, new IntentFilter("me.cns.ab.FINDMY_RELOAD"), "me.cns.ab.permission.DEBUG", null);
+    }
+
+    /**
+     * "Hi Freya! Just getting things ready for you!" over the player after a power-on, until the card is mounted and the
+     * books or music have been read (at least 1.5 s so it does not flash, at most maxMs).
+     */
+    private void showGreeting(final int maxMs) {
+        if (greet != null) { root.removeView(greet); greet.stop(); }
+        final Greeting g = new Greeting(this, eng.id.owner());
+        greet = g;
+        root.addView(g, new FrameLayout.LayoutParams(-1, -1));
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        greetHandler.post(new Runnable() { public void run() {
+            long el = android.os.SystemClock.uptimeMillis() - t0;
+            boolean done = el > maxMs || (maxMs >= 10000 && el > 1500 && (eng.mediaReady() || (el > 20000 && eng.mediaReadyLoosely())));
+            if (done) { g.stop(); root.removeView(g); if (greet == g) greet = null; }
+            else greetHandler.postDelayed(this, 300);
+        } });
     }
 
     /** Switched on while armed for gifting: the boot flag arrives a little after the app starts, so look for it for two minutes. */

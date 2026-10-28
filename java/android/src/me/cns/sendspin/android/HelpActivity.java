@@ -38,7 +38,7 @@ public final class HelpActivity extends Activity {
     private long labelUntil, pausedAt;
     private int tries, relaunches;
     private boolean leftByUser;
-    private Loading loading;
+    private Greeting loading;
     private boolean pausedMusic, cleaned;
     private static final long PAUSED_MAX_MS = 120000;       // a paused video nobody is watching does not hold the screen on
 
@@ -59,7 +59,7 @@ public final class HelpActivity extends Activity {
         video = new VideoView(this);
         root.addView(video, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
         // until the media system has the video ready (a few seconds, early after power-on): a friendly screen with something moving
-        loading = new Loading(this, eng.id.owner());
+        loading = new Greeting(this, eng.id.owner());
         root.addView(loading, new FrameLayout.LayoutParams(-1, -1));
         label = new TextView(this);
         label.setTextColor(Color.WHITE);
@@ -195,60 +195,4 @@ public final class HelpActivity extends Activity {
     }
 
     private boolean started() { try { return shown >= 0 || video.getCurrentPosition() > 0; } catch (RuntimeException e) { return false; } }
-
-    /** "Hi Freya! Just getting things ready for you!": bobbing dots and twinkling stars, drawn by hand (no media needed). */
-    private static final class Loading extends android.view.View {
-        private final String hi;
-        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-        private final android.graphics.Typeface bold, reg;
-        private final float[] sx = new float[28], sy = new float[28], sp = new float[28];
-        private boolean running = true;
-
-        Loading(Context c, String name) {
-            super(c);
-            hi = name.length() > 0 ? "Hi " + name + "!" : "Hi there!";
-            android.graphics.Typeface b, r;
-            try { b = android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts/Inter-Bold.ttf"); } catch (RuntimeException e) { b = android.graphics.Typeface.DEFAULT_BOLD; }
-            try { r = android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts/Inter-Regular.ttf"); } catch (RuntimeException e) { r = android.graphics.Typeface.DEFAULT; }
-            bold = b;
-            reg = r;
-            java.util.Random rnd = new java.util.Random(7);
-            for (int i = 0; i < sx.length; i++) { sx[i] = rnd.nextFloat(); sy[i] = rnd.nextFloat(); sp[i] = 0.6f + rnd.nextFloat() * 1.6f; }
-        }
-
-        void stop() { running = false; }
-
-        @Override
-        protected void onDraw(android.graphics.Canvas c) {
-            int w = getWidth(), h = getHeight();
-            float u = Math.min(w, h) / 20f;
-            long t = SystemClock.uptimeMillis();
-            p.setShader(new android.graphics.LinearGradient(0, 0, 0, h, 0xFF14143A, 0xFF05050C, android.graphics.Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, p);
-            p.setShader(null);
-            for (int i = 0; i < sx.length; i++) {                                         // twinkling stars
-                float tw = 0.5f + 0.5f * (float) Math.sin(t / 1000.0 * sp[i] * 2 + i);
-                p.setColor(((int) (40 + 190 * tw) << 24) | 0xFFFFFF);
-                c.drawCircle(sx[i] * w, sy[i] * h * 0.9f, u * (0.07f + 0.09f * tw), p);
-            }
-            p.setTextAlign(android.graphics.Paint.Align.CENTER);
-            p.setColor(0xFFFFFFFF);
-            p.setTypeface(bold);
-            p.setTextSize(u * 2.5f);
-            float bob = (float) Math.sin(t / 420.0) * u * 0.18f;
-            c.drawText(hi, w / 2f, h * 0.36f + bob, p);
-            p.setTypeface(reg);
-            p.setColor(0xFFC9CCE8);
-            p.setTextSize(u * 1.15f);
-            c.drawText("Just getting things ready for you!", w / 2f, h * 0.36f + u * 2.4f, p);
-            int[] col = { 0xFFFF6FA5, 0xFFFFC857, 0xFF6FE3FF };                           // three dots that hop in turn
-            for (int i = 0; i < 3; i++) {
-                float ph = (float) ((t / 520.0) - i * 0.28);
-                float hop = Math.max(0f, (float) Math.sin((ph % 1.0 + 1.0) % 1.0 * Math.PI * 1.0));
-                p.setColor(col[i]);
-                c.drawCircle(w / 2f + (i - 1) * u * 2.2f, h * 0.68f - hop * u * 1.7f, u * (0.55f + 0.12f * hop), p);
-            }
-            if (running) postInvalidateDelayed(33);
-        }
-    }
 }

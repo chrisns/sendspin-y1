@@ -311,4 +311,10 @@ without a highlighted line.
   video starts). Test: `am start -n me.cns.sendspin.android/.HelpActivity --ei chapter 0 --ei slow 12000` delays the media start by
   12 s so the screen can be seen. Preparing the video takes about 1 s on some boots and about 11 s on others (3 of 5 timed boots were
   slow), so the greeting is on screen for 1 to 12 s.
+- The greeting on a normal power-on: `MainActivity` puts `Greeting` (the same "Hi <owner>! Just getting things ready for you!" view the Help
+  video uses) over the player when the app starts within 3 minutes of power-on, and takes it away when `Engine.mediaReady()` (card
+  mounted, books and music both read; at least 1.5 s; after 20 s the looser "something read" will do; never more than 45 s).
+  Before the music test it went too soon: the books come from a cache, but the 1,500 songs are read from the card once it mounts, and
+  the first frames of the player showed "Music: playlists and sounds" and "Storage 0% full". Test: hook 985, or reboot and screenshot
+  every 2.5 s from the moment adb answers.
 

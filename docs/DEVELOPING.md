@@ -57,6 +57,8 @@ Codes: the Android key codes (UP 19, DOWN 20, CENTER 23, BACK 4, MENU 82, PLAY/P
 | 997 | Now Playing preview of the highlighted row |
 | 990 | recognise `/sdcard/voice-test.pcm` (16 kHz mono s16le) as if spoken |
 | 992 / 993 | behave as if away from home Wi-Fi / a pretend GPS fix |
+| 985 | show the "Hi Freya!" greeting for 8 s |
+| 991 | arm for gifting without switching off |
 | 989 / 988 | screenshot mode on / off: no Home Assistant sync, no minutes counted, no unlock lines |
 
 A real press of the middle button: `sendevent /dev/input/event0 1 232 1` then `... 1 232 0`. Injected keys do not wake the
