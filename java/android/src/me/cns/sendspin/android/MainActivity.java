@@ -29,7 +29,7 @@ public final class MainActivity extends Activity {
         provision(getIntent());
         ui = new UiView(this, eng);
         setContentView(ui);
-        if (eng.takeGiftBoot()) ui.postDelayed(new Runnable() { public void run() { ui.playHelpAfterBoot(); } }, 6000);   // switched on while armed for gifting
+        giftWatch(0);
         // Test hook: `su -c am broadcast -a me.cns.ab.KEY --ei code N` presses a key inside the app. Guarded by a
         // signature permission, so only root (adb) can use it.
         registerReceiver(new BroadcastReceiver() {
@@ -42,6 +42,15 @@ public final class MainActivity extends Activity {
         registerReceiver(new BroadcastReceiver() {
             public void onReceive(Context c, Intent i) { eng.reloadBeacon(); }
         }, new IntentFilter("me.cns.ab.FINDMY_RELOAD"), "me.cns.ab.permission.DEBUG", null);
+    }
+
+    /** Switched on while armed for gifting: the boot flag arrives a little after the app starts, so look for it for two minutes. */
+    private void giftWatch(final int n) {
+        if (n > 60) return;
+        ui.postDelayed(new Runnable() { public void run() {
+            if (eng.takeGiftBoot()) ui.postDelayed(new Runnable() { public void run() { ui.playHelpAfterBoot(); } }, 4000);   // the media system needs a moment
+            else giftWatch(n + 1);
+        } }, n == 0 ? 3000 : 2000);
     }
 
     private void provision(Intent i) {

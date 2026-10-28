@@ -2268,13 +2268,18 @@ public final class Engine {
     }
 
     /** BootReceiver: a real power-on while armed (not a restart of the app): remember to play the video once it is up. */
-    public void giftBooted() { if (giftArmed() && Help.available()) store.put("giftBoot", Long.valueOf(1)); }
+    public void giftBooted() { if (giftArmed()) store.put("giftBoot", Long.valueOf(1)); }
 
-    /** MainActivity, once up: true once after a power-on while armed. */
+    /**
+     * MainActivity polls this: true once after a power-on while armed, as soon as the video can be played. (The app is the
+     * home screen, so it starts before the boot broadcast sets the flag, and the card may mount after it.)
+     */
     public boolean takeGiftBoot() {
         if (store.num("giftBoot", 0) != 1) return false;
+        if (!giftArmed()) { store.put("giftBoot", Long.valueOf(0)); return false; }     // cancelled meanwhile
+        if (!Help.available()) return false;                                            // card not mounted yet: keep waiting
         store.put("giftBoot", Long.valueOf(0));
-        return giftArmed() && Help.available();
+        return true;
     }
 
     /** Voice search never leaves the iPod (slower; needs the local model). */

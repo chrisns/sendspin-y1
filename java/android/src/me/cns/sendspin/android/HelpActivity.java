@@ -62,6 +62,7 @@ public final class HelpActivity extends Activity {
         final int start = Math.max(0, Math.min(chapters.size() - 1, getIntent().getIntExtra("chapter", 0)));
         video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             public void onPrepared(MediaPlayer mp) {
+                Engine.get(HelpActivity.this).log("help: prepared, " + mp.getDuration() / 1000 + " s, " + mp.getVideoWidth() + "x" + mp.getVideoHeight());
                 final boolean gift = getIntent().getBooleanExtra("gift", false);     // the gift moment: bedtime does not matter
                 if (getIntent().getBooleanExtra("loud", false)) {
                     Engine eng = Engine.get(HelpActivity.this);
