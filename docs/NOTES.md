@@ -291,3 +291,8 @@ without a highlighted line.
   when the video first started (USB blip, the iPod stayed up); `adb kill-server` brought it back.
 - An empty 200 from Home Assistant (webhook not registered, e.g. while it restarts) used to mark the player "removed"
   until the app restarted; it is now a retryable error.
+- Gift video speed: the app keeps its own copy of the Help video in `files/help/` (`Help.mirror`, made at app start; world-readable
+  because the media server opens the file itself) so it does not wait for the memory card to mount at power-on. The trigger no
+  longer waits for the boot-completed broadcast: an armed player within 5 minutes of power-on (uptime) plays it, polling every
+  0.5 s, and the video starts 0.7 s later; `HelpActivity` retries up to 5 times if the media system is not ready. The log says
+  `gift: playing, N s after power-on`, which is the number to look at (Android's own start-up is most of it).

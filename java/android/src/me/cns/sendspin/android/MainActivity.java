@@ -46,11 +46,11 @@ public final class MainActivity extends Activity {
 
     /** Switched on while armed for gifting: the boot flag arrives a little after the app starts, so look for it for two minutes. */
     private void giftWatch(final int n) {
-        if (n > 60) return;
+        if (n > 240) return;
         ui.postDelayed(new Runnable() { public void run() {
-            if (eng.takeGiftBoot()) ui.postDelayed(new Runnable() { public void run() { ui.playHelpAfterBoot(); } }, 4000);   // the media system needs a moment
+            if (eng.takeGiftBoot()) ui.postDelayed(new Runnable() { public void run() { ui.playHelpAfterBoot(); } }, 700);   // HelpActivity retries if the media system is not ready yet
             else giftWatch(n + 1);
-        } }, n == 0 ? 3000 : 2000);
+        } }, n == 0 ? 300 : 500);
     }
 
     private void provision(Intent i) {

@@ -142,6 +142,8 @@ public final class Engine {
         oldCovers.mkdirs();                         // used until the card is mounted (and if it never is)
         sys = new Sys(a);
         beacon = new FindMyBeacon(a);
+        Help.init(a);
+        new Thread(new Runnable() { public void run() { Help.mirror(); } }, "help-mirror").start();   // the video into our own storage (see Help)
         musicLib = new MusicLibrary(new File(android.os.Environment.getExternalStorageDirectory(), "Music"));
         id = new Identity(store);
         favs = new Favourites(store, id);
@@ -2293,10 +2295,13 @@ public final class Engine {
      * home screen, so it starts before the boot broadcast sets the flag, and the card may mount after it.)
      */
     public boolean takeGiftBoot() {
-        if (store.num("giftBoot", 0) != 1) return false;
-        if (!giftArmed()) { store.put("giftBoot", Long.valueOf(0)); return false; }     // cancelled meanwhile
-        if (!Help.available()) return false;                                            // card not mounted yet: keep waiting
+        if (!giftArmed()) return false;
+        // just powered on: do not wait for Android's boot-completed broadcast (late), judge by how long it has been up.
+        // (An app restart in the first minutes after boot while still armed plays it too, once: playing disarms.)
+        boolean justBooted = android.os.SystemClock.elapsedRealtime() < 5 * 60000L || store.num("giftBoot", 0) == 1;
+        if (!justBooted || !Help.available()) return false;
         store.put("giftBoot", Long.valueOf(0));
+        log("gift: playing, " + android.os.SystemClock.elapsedRealtime() / 1000 + " s after power-on");
         return true;
     }
 

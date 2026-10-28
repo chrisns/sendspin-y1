@@ -32,6 +32,7 @@ public final class HelpActivity extends Activity {
     private AudioManager audio;
     private int volumeBefore = -1, shown = -1;
     private long labelUntil, pausedAt;
+    private int tries;
     private boolean pausedMusic, cleaned;
     private static final long PAUSED_MAX_MS = 120000;       // a paused video nobody is watching does not hold the screen on
 
@@ -80,7 +81,14 @@ public final class HelpActivity extends Activity {
             public void onCompletion(MediaPlayer mp) { Engine.get(HelpActivity.this).log("help: video completed at " + mp.getCurrentPosition() + " ms"); finish(); }
         });
         video.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-            public boolean onError(MediaPlayer mp, int what, int extra) { Engine.get(HelpActivity.this).log("help: player error " + what + "/" + extra); Engine.get(HelpActivity.this).notice("Couldn’t play the Help video"); finish(); return true; }
+            public boolean onError(MediaPlayer mp, int what, int extra) {
+                Engine.get(HelpActivity.this).log("help: player error " + what + "/" + extra);
+                if (getIntent().getBooleanExtra("gift", false) && tries++ < 5) {      // just after power-on the media system may not be ready: try again
+                    handler.postDelayed(new Runnable() { public void run() { video.setVideoPath(Help.video().getPath()); } }, 1200);
+                    return true;
+                }
+                Engine.get(HelpActivity.this).notice("Couldn\u2019t play the Help video"); finish(); return true;
+            }
         });
         video.setVideoPath(Help.video().getPath());
         handler.post(poll);
