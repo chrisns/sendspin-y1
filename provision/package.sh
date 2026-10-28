@@ -18,6 +18,7 @@ cp -R provision "$D/"; rm -rf "$D/provision/package.sh" "$D/provision/y1.json" "
 cp deploy/y1_setup.py deploy/device.example.json deploy/deploy_y1.sh "$D/deploy/"
 cp -R custom_components "$D/"
 cp LICENSE THIRD_PARTY_NOTICES.md README.md "$D/"
+cp -R docs "$D/"; rm -rf "$D/docs/screenshots/__pycache__"
 mkdir -p "$D/licenses"; cp licenses/* java/android/libs/*-LICENSE.txt "$D/licenses/"
 cat > "$D/START-HERE.txt" <<TXT
 sendspin-y1 $V: provisioning bundle.

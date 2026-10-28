@@ -95,19 +95,18 @@ the Y1 up. `provision` takes `--shim` (Bluetooth shim), `--voice` (on-device spe
 release bundle's app and helpers); [docs/PROVISIONING.md](docs/PROVISIONING.md) has the detail, what is fetched rather
 than shipped, and why. By hand:
 
-1. **ROM:** with the Y1 on USB, `rom/make-player-rom.sh` removes Solar's launcher and helpers and installs the boot
-   script; `rom/bt/install_shim.sh` installs the Bluetooth shim (optional, for the beacon with headphones).
-2. **Music Assistant:** create a Music Assistant user for the child with access to their own Apple Music provider and
-   speakers only, and a long-lived token for it.
-3. **music-sync and the file server:** fill in `deploy/music-sync.yaml` (the child's provider instance, names) and
-   `deploy/audiobook-files.yaml`, create the `music-sync-token` secret (admin token, plus the child's token as
-   `play_token`), then `kubectl apply` them.
-4. **The app:** first create `deploy/secrets/ma_token` (the child's Music Assistant token from step 2) and
-   `deploy/secrets/gw_prefix` (the random file server path prefix from step 3), then run
-   `MA_HOST=<server> deploy/deploy_y1.sh`, which installs the built app (`java/build_apk.sh` first) and points it at
-   Music Assistant (port 8095) and the file server (port 18099). `python3 provision/y1.py provision` asks for the same
-   values instead.
-5. **Home Assistant:** install the Y1 Player integration (HACS custom repository, or copy
+1. **Music Assistant, music-sync and the file server first**, as set out in [docs/SERVER.md](docs/SERVER.md): the child's
+   Music Assistant user and token, the two services, and the secret file-server prefix.
+2. **Flash Solar** onto the Y1: `python3 provision/y1.py fetch` then `flash` (there is no separate manual flash script; read
+   the back-up and Type A notes in [docs/PROVISIONING.md](docs/PROVISIONING.md) first).
+3. **Build and install the app**: `python3 provision/y1.py build` (or `sh java/android/native/build.sh && sh java/build_apk.sh`),
+   then, with `deploy/secrets/ma_token` and `deploy/secrets/gw_prefix` in place,
+   `MA_HOST=<server> deploy/deploy_y1.sh`: it installs the app and points it at Music Assistant (port 8095) and the file
+   server (port 18099). `python3 provision/y1.py provision` does steps 3 to 5 of this list and asks for the same values.
+4. **Make it the only app:** `MA_HOST=<server> rom/make-player-rom.sh` (removes Solar's launcher and helpers, installs the
+   boot script and time zone rules; run it after step 3's secrets exist). `rom/bt/install_shim.sh` adds the Bluetooth shim
+   (optional, for the beacon with headphones).
+5. **Home Assistant** (`pip3 install websockets` first for `y1_setup.py`; 1Password's `op` only if you use `y1_setup.py op`): install the Y1 Player integration (HACS custom repository, or copy
    `custom_components/y1_player` into your config) and restart. Copy `deploy/device.example.json` to
    `deploy/secrets/bedtime/device.json` and fill it in. Create a Home Assistant long-lived access token for an admin and
    save it to the file named by `ha_admin_token_file` in that config (or export `HA_TOKEN`): it is used on your computer

@@ -15,6 +15,7 @@ javac --release 8 -Xlint:-options -cp "$JAR:$TLSJAR" -d build/classes $CORE andr
 "$BT/aapt2" link -o build/base.apk --manifest android/AndroidManifest.xml -I "$JAR" \
   --min-sdk-version 17 --target-sdk-version 17
 mkdir -p build/assets build/lib/armeabi-v7a
+[ -f android/native/fmhci ] || { echo "android/native/fmhci is missing: run sh android/native/build.sh first (needs zig), or python3 ../provision/y1.py build" >&2; exit 1; }
 cp android/native/fmhci build/assets/   # Find My radio helper, built from native/fmhci.c
 cp -R android/assets/. build/assets/     # Let's Encrypt roots, offline timezone map
 cp android/libs/armeabi-v7a/libconscrypt_jni.so build/lib/armeabi-v7a/

@@ -79,6 +79,13 @@ def doctor(_a=None):
     row("python 3.9+", sys.version_info >= (3, 9), "install Python 3.9 or newer")
     row("adb", adb_path(), "install Android platform-tools")
     row("git", shutil.which("git"), "install git (to fetch the flashing tool)")
+    try:
+        import websockets    # noqa: F401  (deploy/y1_setup.py pair talks to Home Assistant with it)
+        have_ws = True
+    except ImportError:
+        have_ws = False
+    row("websockets (Python)", have_ws, "pip3 install websockets (only for deploy/y1_setup.py, the Home Assistant step)")
+    row("op (1Password CLI)", shutil.which("op"), "optional: only for `y1_setup.py op` (the grown-up code in 1Password)")
     sdk = sdk_dir()
     row("Android SDK android-17", sdk and os.path.exists(os.path.join(sdk, "platforms", "android-17", "android.jar")),
         "sdkmanager 'platforms;android-17' (only to build; --prebuilt skips this)")
@@ -218,8 +225,8 @@ def ask(cfg, key, prompt, secret=False, default=None):
     return v
 
 
-def provision(a):
-    adb = adb_path() or die("adb not found")
+def gather(a):
+    """The Music Assistant details the player needs, asked once (and kept in provision/y1.json, 0600)."""
     cfgf = a.config or os.path.join(ROOT, "provision", "y1.json")
     cfg = json.load(open(cfgf)) if os.path.exists(cfgf) else {}
     say("Music Assistant (the server that streams to the player):")
@@ -227,6 +234,14 @@ def provision(a):
     ask(cfg, "ma_token", "the child's Music Assistant token", secret=True)
     ask(cfg, "gw_prefix", "file server path prefix (the secret folder name music-sync serves)", secret=True)
     cfg.setdefault("ma_port", 8095); cfg.setdefault("gw_port", 18099)
+    fd = os.open(cfgf, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f: json.dump(cfg, f, indent=1)
+    return cfgf, cfg
+
+
+def provision(a):
+    adb = adb_path() or die("adb not found")
+    cfgf, cfg = gather(a)
     def sh(*c, **kw): return run([adb, "-d"] + list(c), **kw)
     # before anything is changed: the tools the later steps use, and the answers (kept, so a failure does not lose them)
     missing = [t for t in ("sh",) + (("zip", "cmake", "curl") if a.voice and not a.prebuilt else ()) if not shutil.which(t)]
@@ -288,6 +303,7 @@ def main():
     a = p.parse_args()
     setup_env()
     if a.cmd == "all":
+        gather(a)                    # ask now: not after the Y1 has been wiped
         fetch(); flash(a); provision(a)
     else:
         {"doctor": doctor, "fetch": fetch, "flash": flash, "build": lambda x: build(), "provision": provision}[a.cmd](a)
