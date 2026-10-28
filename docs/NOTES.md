@@ -306,4 +306,9 @@ without a highlighted line.
 - Testing it: test hook 991 arms without switching off, but arming while the iPod has been up under 5 minutes plays at once. To
   test a boot cleanly, stop the app, set `giftArmed` to 1 in `files/state.json` as root, and reboot; then read the log for
   `gift watch`, `gift: playing`, `help: prepared`.
+- Gift video loading screen: `HelpActivity.Loading` draws "Hi <owner>!" (the owner name from Home Assistant, "Hi there!" if unset),
+  "Just getting things ready for you!", twinkling stars and three hopping dots, until the video is prepared (it goes 0.35 s after the
+  video starts). Test: `am start -n me.cns.sendspin.android/.HelpActivity --ei chapter 0 --ei slow 12000` delays the media start by
+  12 s so the screen can be seen. Preparing the video takes about 1 s on some boots and about 11 s on others (3 of 5 timed boots were
+  slow), so the greeting is on screen for 1 to 12 s.
 
