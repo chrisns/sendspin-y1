@@ -77,6 +77,7 @@ flowchart LR
 | `deploy/device.example.json` | the private config it reads (copy to `deploy/secrets/bedtime/device.json`, or point `DEVICE_CONFIG` at it; `notify` there is the name of a Home Assistant notify service) |
 | `deploy/music-assistant-patch/` | the Music Assistant patch, with how to mount it |
 | `rom/` | scripts that slim the Solar ROM down to this app, the Bluetooth shim installer, time zone data, Find My keys |
+| `docs/` | [the documentation index](docs/README.md): user guide, server, Home Assistant, provisioning, developing |
 | `docs/NOTES.md` | how it was built and the traps found on the way (start here before changing anything low level) |
 
 The Music Assistant patch (`library_remove` for Apple Music through the web player endpoint, scoped to the requesting

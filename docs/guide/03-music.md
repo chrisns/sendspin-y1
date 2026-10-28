@@ -28,4 +28,8 @@ title: Music
 
 ## For grown-ups
 
+Music also has **Search**, **Favourites**, **New songs** (the last month), **Artists**, **Genres**, **Playlists** (streamed from
+Music Assistant, needing Wi-Fi) and **Sounds** (ambient sounds). A song row shows a heart when it is a favourite. A song's
+cover, title and artist are shown in the mini-player at the bottom of every screen; select it to open Now Playing.
+
 Songs are recorded at 192 kbit/s MP3 with cover art and lyrics (LRCLIB, then Genius). Explicit songs are replaced with clean versions where Apple has them; explicit search results are hidden. The list of songs is the child's Apple Music library, kept in step automatically.

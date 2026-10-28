@@ -20,4 +20,8 @@ title: Listening on speakers and headphones
 
 ## For grown-ups
 
+The buttons on Bluetooth headphones work as on any player: play and pause, next and previous (hold for 30 seconds in a
+book), and the volume. They keep working while the iPod's own buttons are on hold. The iPod's own speaker is used when no
+headphones are connected.
+
 Playback moves between the player (its own speaker, or Bluetooth headphones) and any Music Assistant speaker, keeping the position. The player can also appear as a Sendspin speaker itself (*iPod as a speaker*). Bluetooth pairing uses the system stack; connecting is done as root because of a permissions quirk on this Android build (see NOTES).

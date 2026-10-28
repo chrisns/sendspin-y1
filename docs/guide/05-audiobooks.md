@@ -23,4 +23,8 @@ title: Audiobooks
 
 ## For grown-ups
 
+A book's page offers **Play** (or **Resume at...** and **Start again** once it has been listened to), **Download** or
+**Remove download** (frees space; the place is kept), **Chapters** and **Listen on**. *In progress* on the main menu lists
+the books that have been started. Note for anyone scripting the device: *Remove download* sits one row above *Chapters*.
+
 All books are downloaded to the SD card when there is Wi-Fi (Settings, *Keep everything offline*). Position syncs both ways with Music Assistant, so a book started on a speaker continues on the player and the other way round. Holding Next or Previous skips 30 seconds.
