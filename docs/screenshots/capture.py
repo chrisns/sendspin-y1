@@ -313,7 +313,7 @@ def main():
     screen("search", "Search", "Spell a song, album or artist with the wheel; it looks on the iPod and in Apple Music.", M(DOWN, DOWN, DOWN, CENTER, DOWN, CENTER))
     # ---- speakers, settings, status, help
     screen("listen-on", "Listen on", "Move what you are listening to to any speaker in the house, and back, from where you stopped.", M(*([DOWN] * 5), CENTER))
-    screen("settings", "Settings", "Wi-Fi, Bluetooth headphones, armed for gifting, Find My, brightness, and more as you scroll.", M(*([DOWN] * 6), CENTER), boxes=[SSID_SUB])
+    screen("settings", "Settings", "Wi-Fi, Bluetooth headphones, arm for gifting, Find My, brightness, and more as you scroll.", M(*([DOWN] * 6), CENTER), boxes=[SSID_SUB])
     screen("settings-more", "More settings", "Hold after, Unlock, Volume limit and a few others ask for the grown-up code when you select them.", M(*([DOWN] * 6), CENTER, *([DOWN] * 9)))
     screen("wifi", "Wi-Fi", "Pick a network and type its password with the wheel. Joining needs no code; forgetting one does.",
            M(*([DOWN] * 6), CENTER, CENTER), boxes=SSID_ROWS, wait=2.5)

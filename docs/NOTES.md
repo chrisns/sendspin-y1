@@ -279,8 +279,9 @@ without a highlighted line.
   Next and Previous change chapter (Previous restarts the chapter first), the middle button pauses, Back or Menu leave. The
   chapter name shows for 3 s on each change. The video must be baseline H.264 + AAC (`deploy/help/make_stub.py` shows the
   ffmpeg settings the MT6572 decodes: 480x360, 15 fps).
-- "Armed for gifting" (`giftArmed`, setting `gift_armed`, Home Assistant switch): arming (`Engine.setGiftArmed`) pauses, says so and
-  powers the iPod off 4 s later. `BootReceiver` (a real power-on, not an app restart) sets `giftBoot` while armed;
+- "Arm for gifting" (`giftArmed`; the Home Assistant *button* sends a `gift` timestamp in the sealed reply, handled like Find it by
+  `Engine.handleGift`, and the player reports `gift_armed` as a binary sensor): arming (`Engine.setGiftArmed`) pauses, says so and
+  powers the iPod off 8 s later (after the next sync has told Home Assistant). `BootReceiver` (a real power-on, not an app restart) sets `giftBoot` while armed;
   `MainActivity` takes it and, 6 s after the UI is up (the media system needs a moment at boot), starts `HelpActivity`
   with `loud` and `gift`: chapter 0 at full volume, through the speaker only (never wired or Bluetooth headphones), bedtime
   ignored. The volume limit stands aside while `HelpActivity.open`, and the previous volume returns. The row in Settings

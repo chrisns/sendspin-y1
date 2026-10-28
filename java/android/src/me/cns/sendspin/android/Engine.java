@@ -2180,6 +2180,7 @@ public final class Engine {
             if (loc != null) locationSent();
             applySettings(r.get("settings"));
             handleFind(r);
+            handleGift(r);
             Map<String, Object> b = r.get("bedtime") instanceof Map ? Json.map(r.get("bedtime")) : new HashMap<String, Object>();
             int ws = Bedtime.parseHhmm(String.valueOf(b.get("start")), bedtime.startMin);
             int we = Bedtime.parseHhmm(String.valueOf(b.get("end")), bedtime.endMin);
@@ -2229,6 +2230,7 @@ public final class Engine {
         m.put("bedtime_left", Integer.valueOf(bedtime.inWindow(now) ? bedtime.remaining(now) : bedtime.capMin));
         m.put("bedtime_locked", Boolean.valueOf(bedtime.locked(now)));
         m.put("on_hold", Boolean.valueOf(hold.held(android.os.SystemClock.uptimeMillis())));
+        m.put("gift_armed", Boolean.valueOf(giftArmed()));
         m.put("find_my_beacon", findMyEnabled() ? beacon.status : "off");
         String ssid = sys.connectedSsid();
         m.put("wifi_network", ssid == null ? "not connected" : ssid);
@@ -2246,25 +2248,41 @@ public final class Engine {
     private static final String[][] IDENTITY = { { "owner_name", "idOwner" }, { "device_name", "idDevice" },
         { "lost_contact", "idContact" }, { "home_wifi", "idHomeWifi" }, { "counted_speakers", "idCountedSpeakers" } };
     private static final String[] SETTINGS = { "volume_limit", "hold_after", "unlock_speed", "wheel_click", "click_loudness",
-        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline", "voice_local_only", "gift_armed" };
+        "wheel_reversed", "find_my", "speaker_always_on", "keep_offline", "voice_local_only" };
 
     /**
-     * Armed for gifting: arming switches the iPod off; the next time it is turned on it plays the Help video at full volume,
-     * then disarms itself. So a freshly set-up iPod can be handed over and explain itself the first time it is switched on.
+     * Arm for gifting (a button in Home Assistant, or the grown-up row in Settings): it arms and switches the iPod off; the
+     * next time it is turned on it plays the Help video at full volume, then disarms itself. So a freshly set-up iPod can be
+     * handed over and explain itself the first time it is switched on.
      */
     public boolean giftArmed() { return store.num("giftArmed", 0) == 1; }
 
     public void setGiftArmed(boolean on) {
-        if (on && !Help.available()) { touched("gift_armed"); return; }   // nothing to play: stays unarmed, and says so
-        boolean was = giftArmed();
+        if (on && !Help.available()) { say("There is no Help video on this iPod"); return; }   // nothing to play: stays unarmed
         store.put("giftArmed", Long.valueOf(on ? 1 : 0));
-        touched("gift_armed");
-        if (on && !was) {
+        haAt = 0;                                           // tell Home Assistant now (its "armed" sensor), before switching off
+        if (on) {                                           // (pressing the button again while armed switches off again)
             say("Armed: switching off. Turn me on to start the Help video");
             log("gift: armed, powering off");
             pause();
-            pool.schedule(new Runnable() { public void run() { if (giftArmed()) Root.powerOff(); } }, 4, TimeUnit.SECONDS);
+            pool.schedule(new Runnable() { public void run() { if (giftArmed()) Root.powerOff(); } }, 8, TimeUnit.SECONDS);
         }
+    }
+
+    /** The "Arm for gifting" button in Home Assistant: a fresh request (as with Find it) arms and switches off. */
+    private void handleGift(Map<String, Object> r) {
+        String v = r.get("gift") == null ? "" : String.valueOf(r.get("gift"));
+        String seen = store.str("giftSeen", "");
+        if (v.length() == 0 || v.equals(seen)) return;
+        store.put("giftSeen", v);
+        try {
+            long at = Long.parseLong(v), now = r.get("now") instanceof Number ? ((Number) r.get("now")).longValue() : clock.now();
+            if (now - at > 10 * 60000L) return;                 // an old press (the iPod was off): ignore
+        } catch (NumberFormatException e) {
+            return;
+        }
+        log("gift: arm requested from Home Assistant");
+        setGiftArmed(true);
     }
 
     /** BootReceiver: a real power-on while armed (not a restart of the app): remember to play the video once it is up. */
@@ -2314,7 +2332,6 @@ public final class Engine {
         if (k.equals("speaker_always_on")) return Boolean.valueOf(speakerAlways());
         if (k.equals("keep_offline")) return Boolean.valueOf(keepAll());
         if (k.equals("voice_local_only")) return Boolean.valueOf(voiceLocalOnly());
-        if (k.equals("gift_armed")) return Boolean.valueOf(giftArmed());
         for (String[] i : IDENTITY) if (i[0].equals(k)) return id.raw(i[1]);
         return null;
     }
@@ -2368,7 +2385,6 @@ public final class Engine {
         else if (k.equals("speaker_always_on")) setSpeakerAlways(boolOf(v));
         else if (k.equals("keep_offline")) setKeepAll(boolOf(v));
         else if (k.equals("voice_local_only")) setVoiceLocalOnly(boolOf(v));
-        else if (k.equals("gift_armed")) setGiftArmed(boolOf(v));
         else for (String[] i : IDENTITY) {
             if (!i[0].equals(k)) continue;
             if (id.update(i[1], v) && k.equals("device_name") && targetId.length() == 0) targetName = id.device();

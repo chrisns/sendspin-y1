@@ -15,7 +15,7 @@ title: Settings
 
 ## On screen
 
-- ![Wi-Fi, Bluetooth headphones, armed for gifting, Find My, brightness, and more as you scroll.](../screenshots/24-settings.png) <!-- shot:settings -->
+- ![Wi-Fi, Bluetooth headphones, arm for gifting, Find My, brightness, and more as you scroll.](../screenshots/24-settings.png) <!-- shot:settings -->
 - ![Hold after, Unlock, Volume limit and a few others ask for the grown-up code when you select them.](../screenshots/25-settings-more.png) <!-- shot:settings-more -->
 - ![Pick a network and type its password with the wheel. Joining needs no code; forgetting one does.](../screenshots/26-wifi.png) <!-- shot:wifi -->
 - ![Speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction.](../screenshots/36-ha-device-config-more.png) <!-- shot:ha-device-config-more -->

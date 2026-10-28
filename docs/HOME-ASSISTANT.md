@@ -27,14 +27,14 @@ key for a given player key.
 | Kind | Entities |
 |---|---|
 | Sensors | Battery, Now playing (with artist), Listen on, Bedtime minutes left, Find My beacon status, Wi-Fi network, Last seen, Last GPS fix, Bedtime unlocked until |
-| Binary sensors | Charging, Playing, Bedtime locked, Buttons on hold |
+| Binary sensors | Charging, Playing, Bedtime locked, Buttons on hold, Armed for gifting |
 | Location | `device_tracker.<name>`: home Wi-Fi always means home; away from it, a GPS fix less than 6 hours old is shown, otherwise not home |
-| Button | **Find it**: the player rings loudly for a minute (it checks in about every 30 s on Wi-Fi, so within a minute or so; longer with the screen off or after failed syncs) |
+| Buttons | **Arm for gifting** (see *Gifting*), **Find it**: the player rings loudly for a minute (it checks in about every 30 s on Wi-Fi, so within a minute or so; longer with the screen off or after failed syncs) |
 | Text settings | Owner name, Device name, If found contact (lines separated by `\|`), Home Wi-Fi (comma separated), Speakers counted elsewhere |
 | Number settings | Volume limit (the player's own menu offers 50 to 100%, Home Assistant 10 to 100%), Bedtime allowance, Bedtime minutes used |
 | Time settings | Bedtime starts, Bedtime ends |
 | Choice settings | Hold after, Unlock speed, Wheel click, Click loudness |
-| Switches | Wheel reversed, Find My beacon, Speaker always on, Keep everything offline, Voice on the iPod only, **Armed for gifting** |
+| Switches | Wheel reversed, Find My beacon, Speaker always on, Keep everything offline, Voice on the iPod only |
 | Event | `y1_player_unlocked` when the grown-up code is used (also notifies, see options) |
 
 ![The device's configuration: bedtime window and allowance, click, names, Find My, hold, home Wi-Fi, the contact shown if it is found](screenshots/35-ha-device-config.png)
@@ -71,11 +71,13 @@ The *Armed for gifting* row is in the player's Settings too (it asks for the gro
 
 ![The player's Settings: Wi-Fi, Bluetooth headphones, Armed for gifting, Find My beacon, brightness](screenshots/24-settings.png)
 
-*Armed for gifting* switches the player **off**. The next time it is turned on, it plays the Help video at full volume from
-chapter 1 (a few seconds after it has started up; not through headphones), then disarms itself: a freshly set-up iPod
-can be handed over and explains itself the first time it is switched on. The switch works from Home Assistant, or from
-the player's Settings (grown-up code). It will not arm without a Help video on the player. If it is still on and
-on, the Settings row cancels it; bedtime does not stop the gift video.
+The **Arm for gifting** button (or the *Arm for gifting* row in the player's Settings, which asks for the grown-up code) arms
+the player and **switches it off** at its next check-in (a few seconds on Wi-Fi). The next time it is turned on, it plays the
+Help video at full volume from chapter 1 (a few seconds after it has started up; never through headphones, bedtime does not
+stop it), then disarms itself: a freshly set-up iPod can be handed over and explains itself the first time it is switched on.
+The *Armed for gifting* binary sensor shows whether it is armed. It will not arm without a Help video on the player (it says
+so on screen and stays on). Pressing the button again while armed switches it off again; if the player is still on and armed, the
+row in Settings cancels it.
 
 ## Security model
 

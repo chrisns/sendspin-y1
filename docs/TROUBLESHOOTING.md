@@ -17,7 +17,7 @@ to Music Assistant and how much music is still to sync.
 | Voice search says "Voice search needs Wi-Fi" or "Voice search isn’t set up on this iPod" | No local speech model installed, and either no Wi-Fi or *Voice on the iPod only* is on | Install the model (`java/android/native/stt/build.sh install`), or get on Wi-Fi with that switch off |
 | Voice search takes minutes | An old build ran whisper on two threads; the Y1 keeps one CPU core off | Update the app (one thread, a short window); a clip should take 3 to 5 s |
 | The Help row says "The Help video isn’t on this iPod yet" | `/sdcard/Help/help.mp4` is missing | `python3 deploy/help/make_stub.py push`, or copy your video and `help.json` there |
-| *Armed for gifting* will not turn on | There is no Help video on the player | Put the video there first |
+| *Arm for gifting* does nothing (the player says there is no Help video) | There is no Help video on the player | Put the video there first |
 | The time is wrong, or bedtime starts at the wrong moment | The clock has no battery-backed time; it sets itself from Wi-Fi time, the sealed Home Assistant reply, or GPS | Join Wi-Fi once, or let it sync with Home Assistant |
 
 ## Home Assistant

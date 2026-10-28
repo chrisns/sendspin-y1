@@ -386,6 +386,7 @@ class Y1Device:
                 "night": self.night(),
             },
             "find": self.data.get("find", ""),
+            "gift": self.data.get("gift", ""),
         }
 
 

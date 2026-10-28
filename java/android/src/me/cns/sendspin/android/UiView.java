@@ -633,7 +633,7 @@ public final class UiView extends View {
                 r.add(nav(new Row("Bluetooth headphones", btSummary(), new Runnable() { public void run() { sys.bindA2dp(); push(btScreen()); } })));
                 final int br = sys.brightnessPercent();
                 if (Help.available() || eng.giftArmed())
-                    r.add(new Row("Armed for gifting: " + (eng.giftArmed() ? "yes" : "no"),
+                    r.add(new Row(eng.giftArmed() ? "Armed for gifting" : "Arm for gifting",
                         eng.giftArmed() ? "switches off; the Help video plays when you turn it on. Select to cancel" : "switches it off; the Help video plays, loud, when you turn it on", grownUp(new Runnable() { public void run() {
                         eng.setGiftArmed(!eng.giftArmed());
                         if (!eng.giftArmed()) eng.notice("Not armed"); } })));

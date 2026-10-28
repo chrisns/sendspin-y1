@@ -11,6 +11,7 @@ BINARY = [
     ("playing", "Playing", BinarySensorDeviceClass.RUNNING, "mdi:play"),
     ("bedtime_locked", "Bedtime locked", BinarySensorDeviceClass.LOCK, None),
     ("on_hold", "Buttons on hold", None, "mdi:lock"),
+    ("gift_armed", "Armed for gifting", None, "mdi:gift"),
 ]
 
 
