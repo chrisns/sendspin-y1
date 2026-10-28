@@ -8,6 +8,7 @@ import android.content.Intent;
 public final class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
+        Engine.get(c.getApplicationContext()).giftBooted();      // armed for gifting: the Help video plays once the player is up
         c.getApplicationContext().startService(new Intent(c.getApplicationContext(), PlayService.class));
     }
 }

@@ -2248,17 +2248,33 @@ public final class Engine {
     private static final String[] SETTINGS = { "volume_limit", "hold_after", "unlock_speed", "wheel_click", "click_loudness",
         "wheel_reversed", "find_my", "speaker_always_on", "keep_offline", "voice_local_only", "gift_armed" };
 
-    /** Armed for gifting: the first unlock (three taps) plays the Help video at full volume, then it disarms itself. */
+    /**
+     * Armed for gifting: arming switches the iPod off; the next time it is turned on it plays the Help video at full volume,
+     * then disarms itself. So a freshly set-up iPod can be handed over and explain itself the first time it is switched on.
+     */
     public boolean giftArmed() { return store.num("giftArmed", 0) == 1; }
 
-    public void setGiftArmed(boolean on) { setGiftArmed(on, true); }
-
-    /** lock false: armed but still usable, so the iPod's own row can cancel it (the next hold unlock plays the video). */
-    public void setGiftArmed(boolean on, boolean lock) {
+    public void setGiftArmed(boolean on) {
         if (on && !Help.available()) { touched("gift_armed"); return; }   // nothing to play: stays unarmed, and says so
+        boolean was = giftArmed();
         store.put("giftArmed", Long.valueOf(on ? 1 : 0));
         touched("gift_armed");
-        if (on && lock) hold.engage();                      // locked, so the next three taps are the unlock
+        if (on && !was) {
+            say("Armed: switching off. Turn me on to start the Help video");
+            log("gift: armed, powering off");
+            pause();
+            pool.schedule(new Runnable() { public void run() { if (giftArmed()) Root.powerOff(); } }, 4, TimeUnit.SECONDS);
+        }
+    }
+
+    /** BootReceiver: a real power-on while armed (not a restart of the app): remember to play the video once it is up. */
+    public void giftBooted() { if (giftArmed() && Help.available()) store.put("giftBoot", Long.valueOf(1)); }
+
+    /** MainActivity, once up: true once after a power-on while armed. */
+    public boolean takeGiftBoot() {
+        if (store.num("giftBoot", 0) != 1) return false;
+        store.put("giftBoot", Long.valueOf(0));
+        return giftArmed() && Help.available();
     }
 
     /** Voice search never leaves the iPod (slower; needs the local model). */

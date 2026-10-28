@@ -242,7 +242,8 @@ def main():
     ensure_awake()                               # (keys are ignored while the buttons are on hold, so this comes first)
     key(SHOTMODE, gap=0.5)                       # screenshot mode: no Home Assistant sync or minutes counted, no unlock lines (app restart = off)
     pause_if_playing()
-    loud = loud_outputs()
+    PLAYS = {"prepare", "book-now-playing", "voice-listening", "voice-thinking", "voice-results", "voice-result-page", "help-video"}
+    loud = loud_outputs() if (only is None or only & PLAYS) else []     # screens that never play anything need no silence
     if loud:
         sys.exit("music volume is not 0 on output(s) %s: this tool starts playback while it works. Silence everything first:\n"
                  "  adb -d shell \"su -c '%s; reboot'\"\n(note the old values: settings get system volume_music_speaker etc., "

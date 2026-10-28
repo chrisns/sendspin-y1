@@ -608,10 +608,16 @@ public final class UiView extends View {
         };
     }
 
-    private void playHelp(int chapter, boolean loud) {
+    /** After a power-on while armed (MainActivity, a few seconds after it starts, once the media system is up). */
+    public void playHelpAfterBoot() { playHelp(0, true, true); }
+
+    private void playHelp(int chapter, boolean loud) { playHelp(chapter, loud, false); }
+
+    private void playHelp(int chapter, boolean loud, boolean gift) {
         android.content.Intent i = new android.content.Intent(getContext(), HelpActivity.class);
         i.putExtra("chapter", chapter);
         i.putExtra("loud", loud);
+        i.putExtra("gift", gift);
         getContext().startActivity(i);
     }
 
@@ -628,9 +634,9 @@ public final class UiView extends View {
                 final int br = sys.brightnessPercent();
                 if (Help.available() || eng.giftArmed())
                     r.add(new Row("Armed for gifting: " + (eng.giftArmed() ? "yes" : "no"),
-                        eng.giftArmed() ? "the next unlock plays the Help video; select to cancel" : "the next unlock plays the Help video, loud", grownUp(new Runnable() { public void run() {
-                        boolean on = !eng.giftArmed(); eng.setGiftArmed(on, false);   // not locked: this row stays reachable to cancel
-                        eng.notice(on ? "Armed: the next unlock will start the Help video" : "Not armed"); } })));
+                        eng.giftArmed() ? "switches off; the Help video plays when you turn it on. Select to cancel" : "switches it off; the Help video plays, loud, when you turn it on", grownUp(new Runnable() { public void run() {
+                        eng.setGiftArmed(!eng.giftArmed());
+                        if (!eng.giftArmed()) eng.notice("Not armed"); } })));
                 r.add(new Row("Find My beacon: " + (eng.findMyEnabled() ? eng.beacon.status : "off"), "passing iPhones report where it is", grownUp(new Runnable() { public void run() {
                     eng.setFindMyEnabled(!eng.findMyEnabled()); } })));
                 r.add(new Row("Brightness: " + br + "%", "select to change", new Runnable() { public void run() {
@@ -1054,10 +1060,6 @@ public final class UiView extends View {
         holdSwallowUp = code;
         int left = eng.hold.press(code, now);
         if (left == 0) clunk(); else tick();
-        if (left == 0 && eng.giftArmed()) {     // a gifted iPod: the first thing it does is explain itself
-            if (!Help.available()) eng.setGiftArmed(false);          // nothing to play: do not stay armed unseen
-            else if (!eng.bedtimeLocked()) playHelp(0, true);        // HelpActivity disarms once the video has really started
-        }
         return true;
     }
 

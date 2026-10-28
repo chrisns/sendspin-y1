@@ -279,11 +279,13 @@ without a highlighted line.
   Next and Previous change chapter (Previous restarts the chapter first), the middle button pauses, Back or Menu leave. The
   chapter name shows for 3 s on each change. The video must be baseline H.264 + AAC (`deploy/help/make_stub.py` shows the
   ffmpeg settings the MT6572 decodes: 480x360, 15 fps).
-- "Armed for gifting" (`giftArmed`, setting `gift_armed`, Home Assistant switch): arming engages the button hold; the next
-  unlock (`UiView.holdKey`, left == 0) disarms and plays chapter 0 at full volume (the volume limit stands aside while
-  `HelpActivity.open`; the previous volume returns after). Tested awake, locked, three Menu presses. With the screen asleep
-  (injected presses do not wake it) Help paused and closed within 150 ms; a real tap wakes the screen first, and the awake
-  path is the one verified.
+- "Armed for gifting" (`giftArmed`, setting `gift_armed`, Home Assistant switch): arming (`Engine.setGiftArmed`) pauses, says so and
+  powers the iPod off 4 s later. `BootReceiver` (a real power-on, not an app restart) sets `giftBoot` while armed;
+  `MainActivity` takes it and, 6 s after the UI is up (the media system needs a moment at boot), starts `HelpActivity`
+  with `loud` and `gift`: chapter 0 at full volume, through the speaker only (never wired or Bluetooth headphones), bedtime
+  ignored. The volume limit stands aside while `HelpActivity.open`, and the previous volume returns. The row in Settings
+  (grown-up code) cancels it while it is still on. Not tested end to end (a real power-on is needed): the pieces were.
+  Earlier design, replaced: arming locked the iPod and the first three-tap unlock played the video.
 - Test: `su -c am start -n me.cns.sendspin.android/.HelpActivity --ei chapter 3 --ez loud true`. adb dropped for a minute
   when the video first started (USB blip, the iPod stayed up); `adb kill-server` brought it back.
 - An empty 200 from Home Assistant (webhook not registered, e.g. while it restarts) used to mark the player "removed"

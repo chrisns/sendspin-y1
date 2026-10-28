@@ -71,9 +71,11 @@ The *Armed for gifting* row is in the player's Settings too (it asks for the gro
 
 ![The player's Settings: Wi-Fi, Bluetooth headphones, Armed for gifting, Find My beacon, brightness](screenshots/24-settings.png)
 
-*Armed for gifting* locks the player so the first three-tap unlock plays the Help video at full volume from chapter 1,
-then switches itself off. It will not arm without a Help video on the player, and arming from the player's own Settings
-(grown-up code) does not lock it, so it can be cancelled there.
+*Armed for gifting* switches the player **off**. The next time it is turned on, it plays the Help video at full volume from
+chapter 1 (a few seconds after it has started up; not through headphones), then disarms itself: a freshly set-up iPod
+can be handed over and explains itself the first time it is switched on. The switch works from Home Assistant, or from
+the player's Settings (grown-up code). It will not arm without a Help video on the player. If it is still on and
+on, the Settings row cancels it; bedtime does not stop the gift video.
 
 ## Security model
 

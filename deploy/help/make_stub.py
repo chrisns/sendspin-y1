@@ -48,8 +48,12 @@ subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "
 json.dump({"chapters": chapters}, open(os.path.join(OUT, "help.json"), "w"), indent=1)
 print("made", os.path.join(OUT, "help.mp4"), "%.0f s" % t, "%d chapters" % len(chapters))
 if "push" in sys.argv:
+    # never overwrite a real video: only replace a Help video this script put there (it leaves a .stub marker)
+    have = subprocess.run([ADB, "-d", "shell", "su -c 'ls /sdcard/Help 2>/dev/null'"], capture_output=True, text=True).stdout.split()
+    if "help.mp4" in have and ".stub" not in have and "--force" not in sys.argv:
+        sys.exit("/sdcard/Help/help.mp4 is not a stub made by this script (a real video?): not overwriting it. Use --force to replace it.")
     for f in ("help.mp4", "help.json"):
         subprocess.run([ADB, "-d", "push", os.path.join(OUT, f), "/data/local/tmp/" + f], check=True, capture_output=True)
     subprocess.run([ADB, "-d", "shell", "su -c 'mkdir -p /sdcard/Help && cp /data/local/tmp/help.mp4 /data/local/tmp/help.json /sdcard/Help/ "
-                    "&& chmod 664 /sdcard/Help/* && rm /data/local/tmp/help.mp4 /data/local/tmp/help.json'"], check=True)
+                    "&& touch /sdcard/Help/.stub && chmod 664 /sdcard/Help/* && rm /data/local/tmp/help.mp4 /data/local/tmp/help.json'"], check=True)
     print("pushed to /sdcard/Help")

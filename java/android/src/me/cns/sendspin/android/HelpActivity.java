@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Plays the Help video from a chapter and carries on through the rest. Wheel/Next/Previous change chapter, the middle
- * button pauses, Back or Menu leaves. With extra "loud" (the first unlock of a gifted iPod) it plays at full volume.
+ * button pauses, Back or Menu leaves. With extra "loud" (the gift moment: the first switch-on after arming) it plays at full volume.
  */
 public final class HelpActivity extends Activity {
     /** True while it is open: the volume limit stands aside and bedtime does not count it as idle. */
@@ -62,11 +62,12 @@ public final class HelpActivity extends Activity {
         final int start = Math.max(0, Math.min(chapters.size() - 1, getIntent().getIntExtra("chapter", 0)));
         video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             public void onPrepared(MediaPlayer mp) {
+                final boolean gift = getIntent().getBooleanExtra("gift", false);     // the gift moment: bedtime does not matter
                 if (getIntent().getBooleanExtra("loud", false)) {
                     Engine eng = Engine.get(HelpActivity.this);
                     eng.setGiftArmed(false);                    // the gift moment is spent only now the video really plays
                     // deliberate full volume, but not through headphones or a bedtime lock, where the limit stands
-                    if (!eng.bedtimeLocked() && !audio.isWiredHeadsetOn() && !audio.isBluetoothA2dpOn() && volumeBefore < 0) {
+                    if ((gift || !eng.bedtimeLocked()) && !audio.isWiredHeadsetOn() && !audio.isBluetoothA2dpOn() && volumeBefore < 0) {
                         volumeBefore = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
                         audio.setStreamVolume(AudioManager.STREAM_MUSIC, audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
                     }

@@ -29,6 +29,7 @@ public final class MainActivity extends Activity {
         provision(getIntent());
         ui = new UiView(this, eng);
         setContentView(ui);
+        if (eng.takeGiftBoot()) ui.postDelayed(new Runnable() { public void run() { ui.playHelpAfterBoot(); } }, 6000);   // switched on while armed for gifting
         // Test hook: `su -c am broadcast -a me.cns.ab.KEY --ei code N` presses a key inside the app. Guarded by a
         // signature permission, so only root (adb) can use it.
         registerReceiver(new BroadcastReceiver() {
