@@ -11,7 +11,7 @@ title: Listening on speakers and headphones
 
 > Choose Listen on to play your music on a speaker in the house, like the one in your room. It carries on from the same place.
 >
-> For headphones, go to Settings and choose Bluetooth. Pick your headphones and they connect. Turn the volume with the wheel or the buttons on the headphones.
+> For headphones, go to Settings and choose Bluetooth headphones. Put your headphones in pairing mode, choose Search for headphones, and pick them from the list. Turn the volume with the wheel or the buttons on the headphones.
 
 ## On screen
 

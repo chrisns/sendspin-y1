@@ -307,13 +307,13 @@ def main():
     screen("new-songs", "New songs", "Songs added in the last month, newest first.", M(DOWN, DOWN, DOWN, CENTER, DOWN, DOWN, DOWN, CENTER))
     screen("artists", "Artists", "Every artist in your music.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN)))
     screen("artist", "An artist", "Artist, album, song: the albums are a row of covers, with All songs first. Turn the wheel to move along them.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER), wait=1.4)
-    screen("artist-songs", "All of an artist's songs", "Choose All songs, then Shuffle all to hear everything by them in a surprise order.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER, CENTER))
-    screen("album-tracks", "An album", "Choose an album to see its songs, and Shuffle all to mix just that album.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER, DOWN, CENTER))
+    screen("artist-songs", "All of an artist's songs", "Choose All songs, then Shuffle to hear everything by them in a surprise order.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER, CENTER))
+    screen("album-tracks", "An album", "Choose an album to see its songs, and Shuffle to mix just that album.", M(*ARTISTS, *([DOWN] * ARTIST_DOWN), CENTER, DOWN, CENTER))
     screen("search", "Search", "Spell a song, album or artist with the wheel; it looks on the iPod and in Apple Music.", M(DOWN, DOWN, DOWN, CENTER, DOWN, CENTER))
     # ---- speakers, settings, status, help
     screen("listen-on", "Listen on", "Move what you are listening to to any speaker in the house, and back, from where you stopped.", M(*([DOWN] * 5), CENTER))
-    screen("settings", "Settings", "Wi-Fi, Bluetooth headphones, brightness, sleep timer, volume limit, wheel click and more.", M(*([DOWN] * 6), CENTER), boxes=[SSID_SUB])
-    screen("settings-more", "More settings", "Settings a grown-up protects with the code are marked.", M(*([DOWN] * 6), CENTER, *([DOWN] * 9)))
+    screen("settings", "Settings", "Wi-Fi, Bluetooth headphones, armed for gifting, Find My, brightness, and more as you scroll.", M(*([DOWN] * 6), CENTER), boxes=[SSID_SUB])
+    screen("settings-more", "More settings", "Hold after, Unlock, Volume limit and a few others ask for the grown-up code when you select them.", M(*([DOWN] * 6), CENTER, *([DOWN] * 9)))
     screen("wifi", "Wi-Fi", "Pick a network and type its password with the wheel. Joining needs no code; forgetting one does.",
            M(*([DOWN] * 6), CENTER, CENTER), boxes=SSID_ROWS, wait=2.5)
     screen("bluetooth", "Bluetooth headphones", "Pair headphones and the sound moves to them.", M(*([DOWN] * 6), CENTER, DOWN, CENTER), wait=1.5)
@@ -330,7 +330,7 @@ def main():
     pause_if_playing()
     if want("hold"):
         reset(raw, ref); key(HOLD, gap=1.0)
-        shot(raw, "hold", "On hold", "Like the hold switch on an iPod: press any button three times quickly to wake it up.", [CONTACT])
+        shot(raw, "hold", "On hold", "Like the hold switch on an iPod: press the same button three times quickly to wake it up.", [CONTACT])
         ensure_awake()
     if want("bedtime-dark"):
         pause_if_playing(); reset(raw, ref); key(DARK, gap=1.0)

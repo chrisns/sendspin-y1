@@ -9,7 +9,7 @@ title: Searching
 
 ## Narration
 
-> To find something new, choose Search. Turn the wheel to pick each letter.
+> To find something new, choose Search. Turn the wheel to find a letter, and press the middle button to add it. When you have spelled it, press Play.
 >
 > Or do it the easy way. Hold the middle button anywhere except on a song, and say what you want, like, give you better. Let go, and the iPod finds it.
 >

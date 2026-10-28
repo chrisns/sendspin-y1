@@ -9,11 +9,11 @@ title: Music
 
 ## Narration
 
-> Choose Music to find your songs. You can look by artist, by album or by kind of music, or choose New songs to see what has just arrived.
+> Choose Music to find your songs. You can look by artist or by kind of music, and New songs shows what has just arrived.
 >
 > Pick an artist, and you will see a row of their albums. Pick an album to see its songs. Choose All songs to see everything by that artist.
 >
-> You can shuffle too. Shuffle all plays everything in a surprise order, and on an artist or an album it mixes up just theirs.
+> You can shuffle too. Shuffle all music plays everything in a surprise order. Open an artist's All songs, or an album, and choose Shuffle to mix up just those.
 >
 > While a song plays, the words scroll along in time, if the song has them.
 
@@ -22,8 +22,8 @@ title: Music
 - ![Shuffle everything, search, favourites, new songs, artists and more.](../screenshots/10-music.png) <!-- shot:music -->
 - ![Every artist in your music.](../screenshots/14-artists.png) <!-- shot:artists -->
 - ![Artist, album, song: the albums are a row of covers, with All songs first. Turn the wheel to move along them.](../screenshots/15-artist.png) <!-- shot:artist -->
-- ![Choose All songs, then Shuffle all to hear everything by them in a surprise order.](../screenshots/16-artist-songs.png) <!-- shot:artist-songs -->
-- ![Choose an album to see its songs, and Shuffle all to mix just that album.](../screenshots/17-album-tracks.png) <!-- shot:album-tracks -->
+- ![Choose All songs, then Shuffle to hear everything by them in a surprise order.](../screenshots/16-artist-songs.png) <!-- shot:artist-songs -->
+- ![Choose an album to see its songs, and Shuffle to mix just that album.](../screenshots/17-album-tracks.png) <!-- shot:album-tracks -->
 - ![The cover, the title, who is singing, and where it is playing. Turn the wheel for volume.](../screenshots/03-now-playing.png) <!-- shot:now-playing -->
 
 ## For grown-ups

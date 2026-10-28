@@ -11,7 +11,7 @@ title: Favourites
 
 > When you hear a song you love, hold down the middle button on it. A little heart appears.
 >
-> Your hearts all live together in Favourites, at the top of Music. Hold the middle button again to take a heart away.
+> Your hearts all live together in Favourites, near the top of Music. Hold the middle button again to take a heart away.
 
 ## On screen
 

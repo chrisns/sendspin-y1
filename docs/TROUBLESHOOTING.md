@@ -13,11 +13,10 @@ to Music Assistant and how much music is still to sync.
 | The screen says "Goodnight" and only offers *Grown-up code* and *Wi-Fi* | Tonight's allowance is used up (or it is in the bedtime window with none left) | A grown-up types the 5-digit code from 1Password. Allowance and window are on the Home Assistant device page |
 | "Offline" on Status, no music from speakers | No Wi-Fi, or Music Assistant is not reachable | Settings > Wi-Fi. Joining a network needs no code. Check the Music Assistant address was set at provisioning |
 | New songs do not arrive | music-sync is still recording, or has stopped | `kubectl -n music-assistant logs deploy/music-sync`. The first sync takes many hours. Songs Apple has no copy of are listed as unavailable |
-| A song plays but shows the wrong cover | Old: a stale cover for a title match | Fixed in the current app: matching is by title and artist. Update the app |
 | Headphones connect but there is no sound after restarting Bluetooth | A known quirk of this chip: restarting Bluetooth by hand breaks A2DP until a reboot | Reboot the player (Power menu, *Restart*) |
-| Voice search says "Voice search needs Wi-Fi" | No local speech model installed, and no Wi-Fi | Install the model (`java/android/native/stt/build.sh install`) or get on Wi-Fi |
+| Voice search says "Voice search needs Wi-Fi" or "Voice search isn’t set up on this iPod" | No local speech model installed, and either no Wi-Fi or *Voice on the iPod only* is on | Install the model (`java/android/native/stt/build.sh install`), or get on Wi-Fi with that switch off |
 | Voice search takes minutes | An old build ran whisper on two threads; the Y1 keeps one CPU core off | Update the app (one thread, a short window); a clip should take 3 to 5 s |
-| The Help video says "isn't on this iPod yet" | `/sdcard/Help/help.mp4` is missing | `python3 deploy/help/make_stub.py push`, or copy your video and `help.json` there |
+| The Help row says "The Help video isn’t on this iPod yet" | `/sdcard/Help/help.mp4` is missing | `python3 deploy/help/make_stub.py push`, or copy your video and `help.json` there |
 | *Armed for gifting* will not turn on | There is no Help video on the player | Put the video there first |
 | The time is wrong, or bedtime starts at the wrong moment | The clock has no battery-backed time; it sets itself from Wi-Fi time, the sealed Home Assistant reply, or GPS | Join Wi-Fi once, or let it sync with Home Assistant |
 
@@ -26,8 +25,8 @@ to Music Assistant and how much music is still to sync.
 | Symptom | Cause | What to do |
 |---|---|---|
 | Entities are unavailable | The player has not checked in for 10 minutes (off, out of range, or no Wi-Fi) | Settings stay editable and apply when it is back. Check *Last seen* on the device page |
-| Status says "Home Assistant is not answering for this player" | Home Assistant is restarting, or the player is not paired | Wait a minute; otherwise run `deploy/y1_setup.py pair` again. It retries by itself (30 s, then longer) |
-| Status says "not paired in Home Assistant: pair it again" | The integration entry was deleted, or its key does not match the player's | `deploy/y1_setup.py pair` |
+| Status says "Home Assistant: Home Assistant is not answering for this player (starting up, or not paired?)" | Home Assistant is restarting, or the integration entry was deleted (this is what it shows, for as long as it lasts, after a deletion) | Wait a minute; otherwise run `deploy/y1_setup.py pair` again. It retries by itself (30 s, then longer) |
+| Status says "removed from Home Assistant: register it again" | Home Assistant refused the player's key five times in a row (a different key, e.g. after a reinstall) | `deploy/y1_setup.py pair` |
 | Changes to the integration's code have no effect | Home Assistant keeps the old module until a restart | Restart Home Assistant (a reload is not enough) |
 | The player ignores a setting I changed | It was changed on the player later (newest wins) | Change it again; both sides agree within about 30 seconds |
 | *Find it* does nothing | The player is asleep without Wi-Fi, or the press is more than 10 minutes old when it next checks in | It rings on the next check-in if the press is recent; try again with it on Wi-Fi |

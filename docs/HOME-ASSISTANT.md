@@ -28,10 +28,10 @@ key for a given player key.
 |---|---|
 | Sensors | Battery, Now playing (with artist), Listen on, Bedtime minutes left, Find My beacon status, Wi-Fi network, Last seen, Last GPS fix, Bedtime unlocked until |
 | Binary sensors | Charging, Playing, Bedtime locked, Buttons on hold |
-| Location | `device_tracker.<name>`: home Wi-Fi means home, another network not home, otherwise its last GPS fix |
-| Button | **Find it**: the player rings loudly for a minute (it checks in every 30 s on Wi-Fi) |
+| Location | `device_tracker.<name>`: home Wi-Fi always means home; away from it, a GPS fix less than 6 hours old is shown, otherwise not home |
+| Button | **Find it**: the player rings loudly for a minute (it checks in about every 30 s on Wi-Fi, so within a minute or so; longer with the screen off or after failed syncs) |
 | Text settings | Owner name, Device name, If found contact (lines separated by `\|`), Home Wi-Fi (comma separated), Speakers counted elsewhere |
-| Number settings | Volume limit, Bedtime allowance, Bedtime minutes used |
+| Number settings | Volume limit (the player's own menu offers 50 to 100%, Home Assistant 10 to 100%), Bedtime allowance, Bedtime minutes used |
 | Time settings | Bedtime starts, Bedtime ends |
 | Choice settings | Hold after, Unlock speed, Wheel click, Click loudness |
 | Switches | Wheel reversed, Find My beacon, Speaker always on, Keep everything offline, Voice on the iPod only, **Armed for gifting** |
@@ -42,7 +42,7 @@ key for a given player key.
 ![More settings: speakers counted elsewhere, unlock speed, voice on the iPod only, volume limit, wheel click and direction](screenshots/36-ha-device-config-more.png)
 
 Settings work both ways: change one here or on the player and the other has it within about 30 seconds; the newest change
-wins. Reported sensors become unavailable if the player has not checked in for 10 minutes; settings stay editable.
+wins. The reported sensors (battery, now playing, bedtime, Wi-Fi and so on) become unavailable if the player has not checked in for 10 minutes; *Last seen*, *Last GPS fix*, *Bedtime unlocked until*, the location, the *Find it* button and every setting stay available and editable.
 
 ## Options (the integration's *Configure*)
 
@@ -59,8 +59,11 @@ wins. Reported sensors become unavailable if the player has not checked in for 1
 
 A listening allowance inside a night window, counted on the player (also offline) and added to the shared counter with a
 sequence number, so a resent message is never counted twice. When it is used up the player fades out and locks (a
-night-sky screen that takes only the grown-up code and Wi-Fi). The code (TOTP, 5 digits, each used once, accepted up to
-90 s late) lifts the limit for 8 hours, tells you, and opens the protected settings for 10 minutes.
+night-sky screen that takes only the grown-up code and Wi-Fi). The grown-up code (TOTP, 5 digits, each used once, accepted for
+90 to 120 s) does two separate things. Typed on the goodnight screen it lifts the limit for 8 hours and tells you (the
+`y1_player_unlocked` event, payload `{device, until}`, and the notify service). Typed in Settings it only opens the protected
+settings for 10 minutes (ending sooner if the screen goes off); it does not lift the limit and sends nothing to Home Assistant.
+Five wrong codes in a row lock code entry for a minute, doubling each time.
 
 ## Gifting
 
@@ -81,5 +84,5 @@ then switches itself off. It will not arm without a Help video on the player, an
   400, nothing is learned, voice requests are capped (30 s of audio, 6 a minute) and only from a paired player.
 - A paired player can: report its sensors and location, add played minutes (once per sequence number), read and change its
   own settings (device timestamps are bounded, values validated), and ask for speech-to-text. It cannot call any Home
-  Assistant service. Deleting the device or integration entry revokes it and removes its cloudhook.
+  Assistant service. Removing the integration entry revokes it and removes its cloudhook.
 - adb on the player is locked to the maintainer's key when one is installed: see `docs/PROVISIONING.md`.
