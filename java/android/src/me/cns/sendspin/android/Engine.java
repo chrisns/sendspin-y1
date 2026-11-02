@@ -171,6 +171,9 @@ public final class Engine {
         android.app.AlarmManager am = (android.app.AlarmManager) a.getSystemService(Context.ALARM_SERVICE);
         am.setInexactRepeating(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, android.os.SystemClock.elapsedRealtime() + 120000L,
             120000L, android.app.PendingIntent.getBroadcast(a, 0, new Intent(WAKE_ACTION), 0));
+        a.registerReceiver(new BroadcastReceiver() {   // woken up: someone is about to use it (a lit screen alone proves nothing: on a charger it never goes off)
+            public void onReceive(Context c, Intent i) { userInput(); }
+        }, new IntentFilter(Intent.ACTION_SCREEN_ON));
         a.registerReceiver(new BroadcastReceiver() {   // the grown-up session ends when the iPod is put down
             public void onReceive(Context c, Intent i) { grownUpUntil = 0; }
         }, new IntentFilter(Intent.ACTION_SCREEN_OFF));
@@ -1859,6 +1862,10 @@ public final class Engine {
     }
 
     private long lastActiveAt = android.os.SystemClock.elapsedRealtime(), btSwitchedAt = -BtPolicy.MIN_GAP_MS;
+    private volatile long inputAt;                     // the last button, touch or wake (0: none since the app started)
+
+    /** A button or touch reached the app, or the screen woke: somebody is using the iPod. */
+    public void userInput() { inputAt = android.os.SystemClock.elapsedRealtime(); }
 
     /**
      * Keep the beacon on the item's rotating keys whenever nobody needs the headphones (BtPolicy). Needs keys and the driver
@@ -1867,13 +1874,13 @@ public final class Engine {
     private void btPolicyStep() {
         if (!findMyEnabled() || !beacon.hasKeys() || !FindMyBeacon.shimInstalled() || beacon.fixedKey() == null) return;
         long now = android.os.SystemClock.elapsedRealtime();
-        boolean screen = ((PowerManager) app.getSystemService(Context.POWER_SERVICE)).isScreenOn();
+        boolean used = inputAt != 0 && now - inputAt < BtPolicy.RECENT_MS;     // not the screen: "stay awake while charging" keeps it lit all night
         boolean phones = sys.a2dpConnected(), btOn = sys.btOn();
         if (btOn) {
             try { if (sys.bt() != null && !sys.bt().getBondedDevices().isEmpty()) store.put("btpaired", Long.valueOf(1)); } catch (RuntimeException ignored) { }
         }
-        if (screen || playing || phones) lastActiveAt = now;
-        int d = BtPolicy.decide(btOn, phones, playing, screen, store.num("btpaired", 0) == 1, now - lastActiveAt, now - btSwitchedAt);
+        if (used || playing || phones) lastActiveAt = now;
+        int d = BtPolicy.decide(btOn, phones, playing, used, store.num("btpaired", 0) == 1, now - lastActiveAt, now - btSwitchedAt);
         if (d == BtPolicy.OFF) {
             btSwitchedAt = now;
             log("bluetooth: quiet for " + (now - lastActiveAt) / 60000 + " min, switching it off so the beacon can rotate its keys");

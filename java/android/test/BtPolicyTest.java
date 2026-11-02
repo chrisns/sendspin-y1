@@ -21,15 +21,16 @@ public class BtPolicyTest {
         long long_ago = 60 * MIN;
         check("on, quiet 11 min, nothing connected: off", 2, d(true, false, false, false, true, 11 * MIN, long_ago));
         check("on, quiet 9 min: stays on", 0, d(true, false, false, false, true, 9 * MIN, long_ago));
-        check("on, headphones connected, screen off, quiet for an hour: stays on", 0, d(true, true, false, false, true, 60 * MIN, long_ago));
+        check("on, headphones connected, quiet for an hour: stays on", 0, d(true, true, false, false, true, 60 * MIN, long_ago));
         check("on, playing on the speaker: stays on", 0, d(true, false, true, false, true, 60 * MIN, long_ago));
-        check("on, screen on: stays on", 0, d(true, false, false, true, true, 60 * MIN, long_ago));
-        check("off, screen wakes, headphones paired before: on", 1, d(false, false, false, true, true, 0, long_ago));
-        check("off, screen wakes, never paired: stays off", 0, d(false, false, false, true, false, 0, long_ago));
-        check("off, screen off: stays off", 0, d(false, false, false, false, true, 0, long_ago));
-        check("off, playing with the screen off: stays off", 0, d(false, false, true, false, true, 0, long_ago));
+        check("on, used in the last minute: stays on", 0, d(true, false, false, true, true, 0, long_ago));
+        check("on, screen merely lit (charger), nobody using it for 11 min: off", 2, d(true, false, false, false, true, 11 * MIN, long_ago));
+        check("off, somebody uses it, headphones paired before: on", 1, d(false, false, false, true, true, 0, long_ago));
+        check("off, somebody uses it, never paired: stays off", 0, d(false, false, false, true, false, 0, long_ago));
+        check("off, nobody using it: stays off", 0, d(false, false, false, false, true, 0, long_ago));
+        check("off, playing but nobody using it: stays off", 0, d(false, false, true, false, true, 0, long_ago));
         check("just switched on 2 min ago: no switch, even if idle", 0, d(true, false, false, false, true, 30 * MIN, 2 * MIN));
-        check("just switched off 2 min ago: no switch, even on a wake", 0, d(false, false, false, true, true, 0, 2 * MIN));
+        check("just switched off 2 min ago: no switch, even when used", 0, d(false, false, false, true, true, 0, 2 * MIN));
         System.out.println(failed == 0 ? "BtPolicy: ALL PASS" : "BtPolicy: " + failed + " FAILED");
         if (failed != 0) System.exit(1);
     }

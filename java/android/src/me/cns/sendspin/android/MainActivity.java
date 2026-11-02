@@ -127,6 +127,8 @@ public final class MainActivity extends Activity {
             || code == KeyEvent.KEYCODE_MEDIA_NEXT || code == KeyEvent.KEYCODE_MEDIA_PREVIOUS;   // hold: 30 s in a book
     }
 
+    @Override public void onUserInteraction() { eng.userInput(); }
+
     @Override
     public boolean onKeyDown(int code, KeyEvent e) {
         if (eng.finder.stop()) { swallowUp = code; return true; }   // ringing to be found: any button stops it
