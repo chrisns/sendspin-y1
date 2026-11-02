@@ -74,6 +74,31 @@ public final class FindMyBeacon {
         }
     }
 
+    /**
+     * An FMB2 file may carry one more key after its 112 bytes: 28 bytes, a ready-made key from the item's own sequence. That is
+     * what the shim advertises while Android's Bluetooth is on (the headphones are paired to its address, so it cannot
+     * rotate), and the Bluetooth address is pinned to it. Null if the file has none. Owners only look for a key for a week
+     * after its slot, so it needs replacing now and then (and the headphones pairing again).
+     */
+    synchronized byte[] fixedKey() {
+        if (schedule.length() < 140) return null;
+        try {
+            FileInputStream in = new FileInputStream(schedule);
+            try {
+                byte[] all = new byte[140];
+                for (int got = 0; got < 140; ) {
+                    int n = in.read(all, got, 140 - got);
+                    if (n <= 0) return null;
+                    got += n;
+                }
+                if (all[0] != 'F' || all[1] != 'M' || all[2] != 'B' || all[3] != '2') return null;
+                return java.util.Arrays.copyOfRange(all, 112, 140);
+            } finally { in.close(); }
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     private long derivedStamp = -1, derivedIdx;
     private byte[] derivedSk, derivedKey;
 
@@ -240,7 +265,8 @@ public final class FindMyBeacon {
             if (dropConnections() || System.currentTimeMillis() - lastAssert > 5 * 60000L) reassert();
             return;
         }
-        pinShimAddress(k);
+        byte[] fixed = fixedKey();
+        pinShimAddress(fixed != null ? fixed : k);      // the address headphones pair to is the fixed key's, whichever key is on air now
         byte[] addr = new byte[6];                  // sent LSB first
         byte[] msb = address(k);
         for (int i = 0; i < 6; i++) addr[i] = msb[5 - i];
@@ -359,7 +385,8 @@ public final class FindMyBeacon {
      * while the address matches the one pinned at Bluetooth enable, so a rotating timetable goes quiet with Bluetooth on.
      */
     public void writeShimConfig() {
-        byte[] k = currentKey();
+        byte[] k = fixedKey();
+        if (k == null) k = currentKey();                // no fixed key in the file: whatever is current (silent if it has another address)
         if (k == null) return;
         pinShimAddress(k);
         StringBuilder sb = new StringBuilder();

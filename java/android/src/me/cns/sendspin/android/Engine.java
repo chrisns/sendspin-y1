@@ -1858,8 +1858,37 @@ public final class Engine {
         synchronized (beaconLock) { beaconTickLocked(); }
     }
 
+    private long lastActiveAt = android.os.SystemClock.elapsedRealtime(), btSwitchedAt = -BtPolicy.MIN_GAP_MS;
+
+    /**
+     * Keep the beacon on the item's rotating keys whenever nobody needs the headphones (BtPolicy). Needs keys and the driver
+     * shim, so that with Bluetooth on the beacon still has a (fixed) key to carry.
+     */
+    private void btPolicyStep() {
+        if (!findMyEnabled() || !beacon.hasKeys() || !FindMyBeacon.shimInstalled() || beacon.fixedKey() == null) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        boolean screen = ((PowerManager) app.getSystemService(Context.POWER_SERVICE)).isScreenOn();
+        boolean phones = sys.a2dpConnected(), btOn = sys.btOn();
+        if (btOn) {
+            try { if (sys.bt() != null && !sys.bt().getBondedDevices().isEmpty()) store.put("btpaired", Long.valueOf(1)); } catch (RuntimeException ignored) { }
+        }
+        if (screen || playing || phones) lastActiveAt = now;
+        int d = BtPolicy.decide(btOn, phones, playing, screen, store.num("btpaired", 0) == 1, now - lastActiveAt, now - btSwitchedAt);
+        if (d == BtPolicy.OFF) {
+            btSwitchedAt = now;
+            log("bluetooth: quiet for " + (now - lastActiveAt) / 60000 + " min, switching it off so the beacon can rotate its keys");
+            sys.setBtOn(false);
+        } else if (d == BtPolicy.ON) {
+            if (!releaseRadio()) return;                 // the helper has the radio: try again on the next tick
+            btSwitchedAt = now;
+            log("bluetooth: awake, switching it on (headphones have been paired)");
+            sys.setBtOn(true);
+        }
+    }
+
     private void beaconTickLocked() {
         try {
+            btPolicyStep();
             // Runs alongside Wi-Fi since the beacon stopped sending the command that crashed the radio firmware
             // (FindMyBeacon). With Android's Bluetooth on it steps aside (the radio is mtkbt's) and the ROM's driver
             // shim carries the beacon instead.

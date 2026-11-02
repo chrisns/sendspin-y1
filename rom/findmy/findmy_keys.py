@@ -15,6 +15,9 @@ Compact format (little endian): b"FMB2", u32 interval_s (900), u64 index of the 
 itself (java/.../FindMyDerive.java), so it never runs out. The owner's private key is not in it: it is not needed to broadcast,
 and without it a lost iPod cannot be used to read where the item has been. The secret only moves forward, so the file exposes
 keys from that index on, never earlier ones.
+An extra 28 bytes after the 112 (140 in all, unless --no-fixed) is a fixed key: what the iPod advertises while its Bluetooth is on,
+and whose address its Bluetooth address is pinned to. Owners only look for a key for a week after its slot, so it is good for about
+a week; make a new file (and pair the headphones again) when it has lapsed.
 """
 import datetime as dt
 import json
@@ -84,8 +87,11 @@ def compact(path):
     os.makedirs(SECRETS, exist_ok=True)
     with open(OUT, "wb") as f:
         f.write(b"FMB2" + struct.pack("<IQq", 900, i0, int(t0.timestamp())) + pub + sk)
+        if "--no-fixed" not in sys.argv:
+            f.write(acc._primary_key_at(i0).adv_key_bytes)    # the key to carry while Bluetooth is on; the iPod's Bluetooth address becomes its address
     os.chmod(OUT, 0o600)
-    print("wrote %s: %d bytes, secret at index %d (began %s)" % (OUT, os.path.getsize(OUT), i0, t0.strftime("%Y-%m-%d %H:%M:%S Z")))
+    print("wrote %s: %d bytes, secret at index %d (began %s)%s" % (OUT, os.path.getsize(OUT), i0, t0.strftime("%Y-%m-%d %H:%M:%S Z"),
+          "" if "--no-fixed" in sys.argv else ", plus the fixed key for index %d (good for about a week)" % i0))
 
 
 def push():

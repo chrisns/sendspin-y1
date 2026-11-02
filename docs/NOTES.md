@@ -342,3 +342,17 @@ Things found on the way that are worth knowing:
   "Allow USB debugging" prompt. Large files go across as 24 KB pieces with a size check on each and a restart only on failure;
   restarting adb right after a push throws the push away. `pm install` as root from the joined file works where `adb install` stalls.
 
+### Hybrid: rotating keys when idle, a fixed key while Bluetooth is on (2 Nov 2026, built, NOT yet proven on the iPod)
+
+`BtPolicy` (unit-tested, 11 cases) switches Android's Bluetooth: off after 10 quiet minutes (screen off, nothing playing, no
+headphones connected), so the beacon rotates through the real keys; on at a screen wake once headphones have been paired
+(`btpaired` in state.json, set when a bonded device is seen), when the shim carries one FIXED key. Never twice within 5 minutes.
+An FMB2 file of 140 bytes carries that fixed key after the 112 (`findmy_keys.py compact`, `--no-fixed` leaves it out); the
+Bluetooth address pin is the fixed key's address, so headphones pair once to that. The fixed key is only findable for about a week
+after its slot, so it needs replacing (and headphones re-pairing) now and then.
+
+Do NOT switch Bluetooth on with `service call bluetooth 3` while the Find My helper (fmhci) is stopped: on 2 Nov it hung the iPod
+(Home Assistant lost it at 16:08, `adb shell` and `adb reboot` both stuck, a power-button reset was needed). Only the app's own
+path (`releaseRadio()` then `setBtOn(true)`) is safe. Also: the lock screen needs three presses of one button inside the unlock
+window, which `adb` cannot manage on this iPod; set Home Assistant's hold_after to Never while testing and put it back.
+
