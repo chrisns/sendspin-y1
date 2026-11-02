@@ -342,7 +342,7 @@ Things found on the way that are worth knowing:
   "Allow USB debugging" prompt. Large files go across as 24 KB pieces with a size check on each and a restart only on failure;
   restarting adb right after a push throws the push away. `pm install` as root from the joined file works where `adb install` stalls.
 
-### Hybrid: rotating keys when idle, a fixed key while Bluetooth is on (2 Nov 2026, built, NOT yet proven on the iPod)
+### Hybrid: rotating keys when idle, a fixed key while Bluetooth is on (2 Nov 2026, proven on the iPod)
 
 `BtPolicy` (unit-tested, 11 cases) switches Android's Bluetooth: off after 10 quiet minutes (screen off, nothing playing, no
 headphones connected), so the beacon rotates through the real keys; on at a screen wake once headphones have been paired
@@ -355,4 +355,9 @@ Do NOT switch Bluetooth on with `service call bluetooth 3` while the Find My hel
 (Home Assistant lost it at 16:08, `adb shell` and `adb reboot` both stuck, a power-button reset was needed). Only the app's own
 path (`releaseRadio()` then `setBtOn(true)`) is safe. Also: the lock screen needs three presses of one button inside the unlock
 window, which `adb` cannot manage on this iPod; set Home Assistant's hold_after to Never while testing and put it back.
+
+Proven on the iPod, 2 Nov 2026: with Bluetooth on the shim carried the fixed key (heard on air at the pinned address, status "on, with
+Bluetooth"); with the screen off for 10 minutes 40 seconds the app switched Bluetooth off by itself and the helper went back to the
+rotating key (index 316 heard on air); on a screen wake 30 seconds later it switched Bluetooth on again. Not yet tried with headphones
+actually connected: the old pairing is to the previous Bluetooth address, so they need pairing once more.
 
