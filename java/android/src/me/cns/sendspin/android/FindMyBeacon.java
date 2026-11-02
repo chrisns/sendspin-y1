@@ -47,13 +47,18 @@ public final class FindMyBeacon {
 
     public boolean hasKeys() { return schedule.exists() && schedule.length() >= 48; }
 
-    /** The key the iPod should advertise right now, or null. */
-    byte[] currentKey() {
+    /**
+     * The key the iPod should advertise right now, or null. The file is either "FMB1" (a timetable of ready-made keys) or
+     * "FMB2" (the master public key and a secret, from which the key is worked out as a real tag does: no end date).
+     */
+    synchronized byte[] currentKey() {
         try {
             FileInputStream in = new FileInputStream(schedule);
             try {
                 byte[] h = new byte[20];
-                if (in.read(h) != 20 || h[0] != 'F' || h[1] != 'M' || h[2] != 'B' || h[3] != '1') return null;
+                if (in.read(h) != 20 || h[0] != 'F' || h[1] != 'M' || h[2] != 'B') return null;
+                if (h[3] == '2') return derivedKey(in, h);
+                if (h[3] != '1') return null;
                 long count = le(h, 4, 4), start = le(h, 8, 8), interval = le(h, 16, 4);
                 long idx = interval == 0 ? 0 : (System.currentTimeMillis() / 1000 - start) / interval;
                 if (idx < 0) idx = 0;
@@ -67,6 +72,36 @@ public final class FindMyBeacon {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    private long derivedStamp = -1, derivedIdx;
+    private byte[] derivedSk, derivedKey;
+
+    /**
+     * FMB2, little endian: "FMB2", interval in seconds (4), index of the secret (8), start time of that index (8), master
+     * public key x then y (56), the secret (32): 112 bytes. The secret only moves forward, so it is stepped on from where
+     * the file left it, and kept in memory between ticks; a new file starts again from its own.
+     */
+    private byte[] derivedKey(FileInputStream in, byte[] h) throws IOException {
+        byte[] all = new byte[112];
+        System.arraycopy(h, 0, all, 0, 20);
+        for (int got = 20; got < 112; ) {
+            int n = in.read(all, got, 112 - got);
+            if (n <= 0) return null;
+            got += n;
+        }
+        long interval = le(all, 4, 4), i0 = le(all, 8, 8), t0 = le(all, 16, 8);
+        if (interval <= 0) return null;
+        long now = System.currentTimeMillis() / 1000;
+        long idx = i0 + (now >= t0 ? (now - t0) / interval : 0);
+        long stamp = schedule.lastModified() ^ schedule.length();
+        if (stamp != derivedStamp) {
+            derivedStamp = stamp; derivedIdx = i0; derivedKey = null;
+            derivedSk = java.util.Arrays.copyOfRange(all, 80, 112);
+        }
+        while (derivedIdx < idx) { derivedSk = FindMyDerive.next(derivedSk); derivedIdx++; derivedKey = null; }
+        if (derivedKey == null) derivedKey = FindMyDerive.advKey(java.util.Arrays.copyOfRange(all, 24, 80), derivedSk);
+        return derivedKey.clone();
     }
 
     private static long le(byte[] b, int off, int n) {

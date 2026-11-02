@@ -4,10 +4,17 @@
   findmy_keys.py haystack            new OpenHaystack-style key (static); private key kept in deploy/secrets/findmy
   findmy_keys.py accessory FILE.json  keys of a real Find My item exported from your Apple account (FindMy.py JSON,
                                       e.g. from stek29/export-findmy); writes 15-minute rotating keys for DAYS ahead
-  findmy_keys.py push                 copy the timetable to the iPod (/sdcard/FindMy/findmy.bin) and tell the app
+  findmy_keys.py compact FILE.json    the same item as a 112-byte file: master PUBLIC key and the secret for now (see below), no end date
+  findmy_keys.py push                 copy the file to the iPod (/sdcard/FindMy/findmy.bin) and tell the app
 
 Timetable format (little endian): b"FMB1", u32 count, i64 start_epoch_s, u32 interval_s (0 = one static key),
 then count x 28-byte advertisement keys. The iPod derives the BLE address and payload from each key.
+
+Compact format (little endian): b"FMB2", u32 interval_s (900), u64 index of the secret, i64 epoch_s that index began,
+56 bytes master public key (x then y), 32 bytes secret = 112 bytes. The iPod steps the secret forward and works out each key
+itself (java/.../FindMyDerive.java), so it never runs out. The owner's private key is not in it: it is not needed to broadcast,
+and without it a lost iPod cannot be used to read where the item has been. The secret only moves forward, so the file exposes
+keys from that index on, never earlier ones.
 """
 import datetime as dt
 import json
@@ -61,6 +68,26 @@ def accessory(path):
     write(start.timestamp(), 900, keys)
 
 
+def compact(path):
+    import hashlib
+    from findmy import FindMyAccessory
+    from cryptography.hazmat.primitives.asymmetric import ec
+    acc = FindMyAccessory.from_json(path)
+    now = dt.datetime.now(dt.timezone.utc)
+    i0 = acc.get_max_index(now)
+    t0 = acc._alignment_date + dt.timedelta(minutes=15) * (i0 - acc._alignment_index)   # when that index begins, on the accessory's clock
+    sk = acc.skn
+    for _ in range(i0):
+        sk = hashlib.sha256(sk + b"\x00\x00\x00\x01" + b"update").digest()
+    n = ec.derive_private_key(int.from_bytes(acc.master_key, "big"), ec.SECP224R1()).public_key().public_numbers()
+    pub = n.x.to_bytes(28, "big") + n.y.to_bytes(28, "big")
+    os.makedirs(SECRETS, exist_ok=True)
+    with open(OUT, "wb") as f:
+        f.write(b"FMB2" + struct.pack("<IQq", 900, i0, int(t0.timestamp())) + pub + sk)
+    os.chmod(OUT, 0o600)
+    print("wrote %s: %d bytes, secret at index %d (began %s)" % (OUT, os.path.getsize(OUT), i0, t0.strftime("%Y-%m-%d %H:%M:%S Z")))
+
+
 def push():
     adb = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
     # /sdcard is not writable by adb's shell user here, so stage the file and copy it as root
@@ -74,5 +101,6 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "haystack": haystack()
     elif cmd == "accessory" and len(sys.argv) > 2: accessory(sys.argv[2])
+    elif cmd == "compact" and len(sys.argv) > 2: compact(sys.argv[2])
     elif cmd == "push": push()
     else: print(__doc__)

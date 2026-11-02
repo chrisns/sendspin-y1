@@ -318,3 +318,27 @@ without a highlighted line.
   the first frames of the player showed "Music: playlists and sounds" and "Storage 0% full". Test: hook 985, or reboot and screenshot
   every 2.5 s from the moment adb answers.
 
+## Find My beacon: the compact key file (2 Nov 2026)
+
+`/sdcard/FindMy/findmy.bin` is either `FMB1` (a timetable of ready-made 28-byte keys, 400 days is about 1 MB and runs out) or
+`FMB2`: 112 bytes, the master PUBLIC key (56), the secret for one index (32), and when that index began. The app works each key
+out itself, as a real tag does (`FindMyDerive.java`: SHA-256 chain for the secret, then u*P + v*G on P-224, the x coordinate is the
+key), so it never runs out. The owner's private key is not on the iPod: it is only needed to read reports, and without it a lost
+iPod cannot be used to see where the item has been. The secret only moves forward, so the file exposes keys from its index on.
+`rom/findmy/findmy_keys.py compact FILE.json` makes it. `test/FindMyDeriveTest.java` checks the port against FindMy.py on a
+made-up accessory (9 indexes, up to 5000 steps on); verified on the real Y1 too: the iPod advertised the address of the key it
+worked out, heard by a Home Assistant Bluetooth proxy.
+
+Things found on the way that are worth knowing:
+- Owners ask Apple for the last 7 days of keys and Apple keeps reports for 7 days, so a FROZEN key (one fixed key) is only
+  findable for about a week after its slot. A frozen key is the only way to keep a Bluetooth address that headphones stay paired
+  to, so headphones and the beacon cannot both be on for long; rotating keys change the Bluetooth address every 15 minutes.
+- Play Sound cannot work on this chip. Find My does try to connect (the Mac's log shows `FindMyPlaySound`), the Y1 advertises
+  connectable adverts at the right address (a proxy sees them), and a plain connection from the Mac also times out, but the radio
+  log never shows a connection. Real tags send a second, 4-byte "nearby" advert (`07 ff 4c 00 12 02 SS KK`, KK = key[0] >> 6) when
+  their owner is close; the Y1 only sends the long one. Sending the short one made no difference to the connection.
+- Rotation boundaries are on the accessory's own clock (alignment date plus multiples of 15 minutes), not on the quarter hour.
+- `adb push` of more than about 20 KB silently fails on this iPod unless adb was just restarted, and every restart can raise the
+  "Allow USB debugging" prompt. Large files go across as 24 KB pieces with a size check on each and a restart only on failure;
+  restarting adb right after a push throws the push away. `pm install` as root from the joined file works where `adb install` stalls.
+
