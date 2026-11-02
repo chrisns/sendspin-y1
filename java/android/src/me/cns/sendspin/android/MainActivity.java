@@ -47,6 +47,13 @@ public final class MainActivity extends Activity {
                 ui.post(new Runnable() { public void run() { if (!ui.holdKey(code, null, true)) ui.onKey(code, null); } });
             }
         }, new IntentFilter("me.cns.ab.KEY"), "me.cns.ab.permission.DEBUG", null);
+        // Test and maintenance hook: `su -c am broadcast -a me.cns.ab.FORGETBT [--es address AA:BB:..]` forgets paired Bluetooth devices
+        registerReceiver(new BroadcastReceiver() {
+            public void onReceive(Context c, Intent i) {
+                final String a = i.getStringExtra("address");
+                eng.runAsync(new Runnable() { public void run() { eng.log("bluetooth: forget " + (a == null ? "all" : a) + ": " + eng.sys.forgetBonded(a)); } });
+            }
+        }, new IntentFilter("me.cns.ab.FORGETBT"), "me.cns.ab.permission.DEBUG", null);
         // rom/findmy/findmy_keys.py push: new keys were copied to /sdcard/FindMy
         registerReceiver(new BroadcastReceiver() {
             public void onReceive(Context c, Intent i) { eng.reloadBeacon(); }

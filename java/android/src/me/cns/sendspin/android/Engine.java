@@ -1877,7 +1877,12 @@ public final class Engine {
         boolean used = inputAt != 0 && now - inputAt < BtPolicy.RECENT_MS;     // not the screen: "stay awake while charging" keeps it lit all night
         boolean phones = sys.a2dpConnected(), btOn = sys.btOn();
         if (btOn) {
-            try { if (sys.bt() != null && !sys.bt().getBondedDevices().isEmpty()) store.put("btpaired", Long.valueOf(1)); } catch (RuntimeException ignored) { }
+            try {       // follows what is really paired, so forgetting the headphones stops Bluetooth coming on for nothing
+                if (sys.bt() != null) {
+                    long now01 = sys.bt().getBondedDevices().isEmpty() ? 0 : 1;
+                    if (store.num("btpaired", 0) != now01) store.put("btpaired", Long.valueOf(now01));
+                }
+            } catch (RuntimeException ignored) { }
         }
         if (used || playing || phones) lastActiveAt = now;
         int d = BtPolicy.decide(btOn, phones, playing, used, store.num("btpaired", 0) == 1, now - lastActiveAt, now - btSwitchedAt);

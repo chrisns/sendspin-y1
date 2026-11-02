@@ -180,6 +180,26 @@ public final class Sys {
 
     public void discover() { if (btOn()) { bt().cancelDiscovery(); bt().startDiscovery(); } }
 
+    /**
+     * Forget a paired Bluetooth device (all of them if address is empty): removeBond is hidden API on Android 4.2, hence
+     * reflection. Returns what it did, for the log. Bluetooth has to be on.
+     */
+    public String forgetBonded(String address) {
+        if (!btOn()) return "Bluetooth is off";
+        StringBuilder done = new StringBuilder();
+        try {
+            java.lang.reflect.Method rm = BluetoothDevice.class.getMethod("removeBond");
+            for (BluetoothDevice d : new ArrayList<BluetoothDevice>(bt().getBondedDevices())) {
+                if (address != null && address.length() > 0 && !address.equalsIgnoreCase(d.getAddress())) continue;
+                Object ok = rm.invoke(d);
+                done.append(d.getAddress()).append(' ').append(ok).append("; ");
+            }
+        } catch (Exception e) {
+            return "failed: " + e;
+        }
+        return done.length() == 0 ? "nothing paired" : done.toString();
+    }
+
     public List<Dev> devices(List<BluetoothDevice> found) {
         List<Dev> out = new ArrayList<Dev>();
         if (!btOn()) return out;

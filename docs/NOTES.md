@@ -361,3 +361,8 @@ Bluetooth"); with the screen off for 10 minutes 40 seconds the app switched Blue
 rotating key (index 316 heard on air); on a screen wake 30 seconds later it switched Bluetooth on again. Not yet tried with headphones
 actually connected: the old pairing is to the previous Bluetooth address, so they need pairing once more.
 
+Maintenance hook: `su -c am broadcast -a me.cns.ab.FORGETBT [--es address AA:BB:CC:DD:EE:FF]` forgets paired Bluetooth devices (all of
+them without an address) through `BluetoothDevice.removeBond` by reflection, and logs `bluetooth: forget ...`. Bluetooth has to be on,
+so press a button first and let the rule switch it on. Do not guess `service call bluetooth` method numbers for this: the bond-state
+call answered nonsense. The app's `btpaired` flag now follows what is really paired (0 once the last device is forgotten).
+
