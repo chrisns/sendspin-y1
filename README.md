@@ -108,7 +108,7 @@ user's accounts) is a `sitecustomize.py` mounted into the stock image; see `depl
 
 ## Setting one up
 
-You need: a Y1 (Type A, Android 4.2) flashed with the Solar ROM and rooted, a Music Assistant server with the child's
+You need: a Y1 ([Innioasis Y1 on Amazon UK](https://www.amazon.co.uk/Innioasis-Y1-MP3-Player-Audiobooks-Silver/dp/B0H3LRSJ1N?tag=cns094-21), affiliate link: it costs you nothing extra and tips me a few pence; Type A, Android 4.2) flashed with the Solar ROM and rooted, a Music Assistant server with the child's
 Apple Music added as its own provider, a Home Assistant instance, and Android build tools (SDK build-tools 34.0.0, the
 android-17 platform, JDK 17, and [zig](https://ziglang.org/) for the native helpers).
 
