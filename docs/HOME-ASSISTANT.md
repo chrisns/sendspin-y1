@@ -5,8 +5,8 @@ Assistant token: it pairs with the integration by public key and talks to it onl
 
 ## Install
 
-1. Copy `custom_components/y1_player` into your Home Assistant `config/custom_components/`, or add this repository to HACS as
-   a custom repository (category *Integration*). Restart Home Assistant. (Changes to the integration's code need a full
+1. Copy `custom_components/y1_player` into your Home Assistant `config/custom_components/`, or install **Y1 Player** from HACS
+   (it is in the default list: HACS, search for "Y1 Player", download). Restart Home Assistant. (Changes to the integration's code need a full
    restart, not a reload.)
 2. Pair the player, either way:
    - `python3 deploy/y1_setup.py pair` (the player on USB; it reads the player's key, adds it to the integration, links

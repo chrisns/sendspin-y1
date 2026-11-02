@@ -61,9 +61,10 @@ More in the [user guide](docs/guide/README.md), which is also the script of the 
 - **No token on the device:** the player pairs with the integration by public key (X25519) and talks to it only through
   sealed, replay-proof messages, so it can report and read its settings and nothing else, at home or through Nabu
   Casa.
-- **Find My beacon:** an OpenHaystack-style Bluetooth beacon that keeps running alongside Wi-Fi and Bluetooth audio, via
-  a small driver shim (no LE advertising-parameters command, which crashes this chip's firmware). The shim is
-  optional (`--shim` when provisioning) and the Y1 reboots to load it.
+- **Find My beacon:** the Y1 shows up in Apple's Find My app as an item, using the keys of an off-brand AirTag-compatible
+  tag. It rotates keys on the device while idle and holds one fixed key while headphones are in use (a small driver shim
+  carries it, with no LE advertising-parameters command, which crashes this chip's firmware). The shim is optional
+  (`--shim` when provisioning) and the Y1 reboots to load it. No Play Sound: the chip never accepts connections.
 
 ## How it fits together
 
@@ -94,7 +95,7 @@ flowchart LR
 | `java/android/native/` | root helpers: the Bluetooth driver shim (`btshim.c`), the beacon helper, a Wi-Fi control tool |
 | `deploy/music-sync/` | the recording service, and its manifest `deploy/music-sync.yaml` |
 | `deploy/audiobook-files.yaml` | the file server for audiobooks and recordings |
-| `custom_components/y1_player/` | the Home Assistant integration (install with HACS as a custom repository, or copy it) |
+| `custom_components/y1_player/` | the Home Assistant integration (install it from HACS, or copy it) |
 | `deploy/y1_setup.py` | pairs a player with the integration and makes its grown-up code |
 | `deploy/device.example.json` | the private config it reads (copy to `deploy/secrets/bedtime/device.json`, or point `DEVICE_CONFIG` at it; `notify` there is the name of a Home Assistant notify service) |
 | `deploy/music-assistant-patch/` | the Music Assistant patch, with how to mount it |
@@ -128,7 +129,7 @@ than shipped, and why. By hand:
 4. **Make it the only app:** `MA_HOST=<server> rom/make-player-rom.sh` (removes Solar's launcher and helpers, installs the
    boot script and time zone rules; run it after step 3's secrets exist). `rom/bt/install_shim.sh` adds the Bluetooth shim
    (optional, for the beacon with headphones).
-5. **Home Assistant** (`pip3 install websockets` first for `y1_setup.py`; 1Password's `op` only if you use `y1_setup.py op`): install the Y1 Player integration (HACS custom repository, or copy
+5. **Home Assistant** (`pip3 install websockets` first for `y1_setup.py`; 1Password's `op` only if you use `y1_setup.py op`): install the Y1 Player integration (search for "Y1 Player" in HACS, or copy
    `custom_components/y1_player` into your config) and restart. Copy `deploy/device.example.json` to
    `deploy/secrets/bedtime/device.json` and fill it in. Create a Home Assistant long-lived access token for an admin and
    save it to the file named by `ha_admin_token_file` in that config (or export `HA_TOKEN`): it is used on your computer
