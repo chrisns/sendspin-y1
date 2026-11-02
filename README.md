@@ -64,7 +64,7 @@ More in the [user guide](docs/guide/README.md), which is also the script of the 
 - **Find My beacon:** the Y1 shows up in Apple's Find My app as an item, using the keys of an off-brand AirTag-compatible
   tag. It rotates keys on the device while idle and holds one fixed key while headphones are in use (a small driver shim
   carries it, with no LE advertising-parameters command, which crashes this chip's firmware). The shim is optional
-  (`--shim` when provisioning) and the Y1 reboots to load it. No Play Sound: the chip never accepts connections.
+  (`--shim` when provisioning) and the Y1 reboots to load it. No Play Sound: the chip never accepts connections. How to set it up: [docs/FIND-MY.md](docs/FIND-MY.md).
 
 ## How it fits together
 
