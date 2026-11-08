@@ -18,7 +18,7 @@ spec:
       # nodeSelector: {kubernetes.io/hostname: YOUR-NODE}   # the node whose hostPath holds the recordings
       containers:
       - name: sync
-        image: ghcr.io/chrisns/sendspin-y1-music-sync:main
+        image: ghcr.io/chrisns/sendspin-y1-music-sync:main@sha256:b3fbd47408aa70dbcaf9b35dc8e5d76002201450e3f8d51e70ed7607b6df9ca3
         env:
         - {name: PLAYLIST, value: FREYAS}                       # only used without LIBRARY_PROVIDER
         - {name: LIBRARY_PROVIDER, value: apple_music--XXXXXXXX} # the child's own Apple Music provider instance in MA
