@@ -9,8 +9,8 @@
 # Needs: zig, cmake, git, curl, adb.
 set -e
 cd "$(dirname "$0")"
-V=v1.7.6
-VCOMMIT=a8d002cfd879315632a579e73f0148d06959de36      # what v1.7.6 pointed at when this was proven (a tag can be moved)
+V=v1.9.5
+VCOMMIT=d1be6fde11ac6e0407606b4e42fe72d34add8037      # what v1.7.6 pointed at when this was proven (a tag can be moved)
 MODEL=${MODEL:-tiny.en-q5_1}
 APP=me.cns.sendspin.android
 ADB="${ADB:-adb} -d"
