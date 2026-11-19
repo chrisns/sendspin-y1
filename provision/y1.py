@@ -26,8 +26,8 @@ SOLAR_SHA256 = "630c158b10ec1da54b3c22f9aca49f3623586ff16166123018fe544338ddd798
 UPDATER_GIT = "https://github.com/y1-community/Innioasis-Updater.git"
 UPDATER_COMMIT = "c25838c06bba45672a9ceeab4e7b491ef8a3ff24"      # the version this was proven with
 # the versions this was proven with (pip freeze of the working venv); their own dependencies are not locked
-PIP = ["wheel==0.48.0", "setuptools==84.2.1", "pyusb==1.3.1", "pycryptodome==4.2.0", "pycryptodomex==3.24.1", "colorama==0.4.6",
-       "pyserial==3.5", "keystone-engine==0.9.2", "capstone==5.0.9", "unicorn==2.1.4", "requests==2.34.2", "numpy==2.5.4",
+PIP = ["wheel==0.48.0", "setuptools==84.2.1", "pyusb==1.3.1", "pycryptodome==4.5.0", "pycryptodomex==3.24.2", "colorama==0.4.6",
+       "pyserial==3.5", "keystone-engine==0.9.2", "capstone==5.0.9", "unicorn==2.1.4", "requests==2.34.2", "numpy==2.5.5",
        "pillow==13.0.0", "mock==5.2.0"]
 # what gets written, as partition=file inside rom.zip: never preloader, nvram, pro_info (they hold this unit's identity)
 FLASH = [("logo", "logo.bin"), ("uboot", "lk.bin"), ("bootimg", "boot.img"), ("recovery", "recovery.img"),
